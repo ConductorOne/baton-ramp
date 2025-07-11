@@ -6,8 +6,11 @@ import (
 
 var (
 	// Add the SchemaFields for the Config.
-	configField         = field.StringField("configField")
-	ConfigurationFields = []field.SchemaField{configField}
+	Token = field.StringField("token",
+		field.WithIsSecret(true),
+		field.WithDisplayName("Ramp Access Token"),
+	)
+	ConfigurationFields = []field.SchemaField{Token}
 
 	// FieldRelationships defines relationships between the ConfigurationFields that can be automatically validated.
 	// For example, a username and password can be required together, or an access token can be
