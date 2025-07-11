@@ -52,6 +52,7 @@ func (o *roleBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId,
 			role.Name,
 			roleResourceType,
 			fmt.Sprintf("role:%s", role.ID),
+			resourceSdk.WithRoleTrait(),
 		)
 		if err != nil {
 			return nil, "", nil, err

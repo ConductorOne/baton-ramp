@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +9,8 @@ import (
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/uhttp"
+	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
+	"go.uber.org/zap"
 )
 
 const (
@@ -38,26 +39,30 @@ func (c *Client) query(ctx context.Context, method string, requestURL string, re
 
 	var ratelimitData v2.RateLimitDescription
 	resp, err := c.Do(req,
+		uhttp.WithJSONResponse(res),
 		uhttp.WithRatelimitData(&ratelimitData),
 	)
 	if err != nil {
+		logBody(ctx, resp.Body)
 		return &ratelimitData, fmt.Errorf("failed to execute request %s: %w", reqUrl.String(), err)
 	}
+
 	defer resp.Body.Close()
-	rawResp, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return &ratelimitData, fmt.Errorf("failed to read response body %s: %w", reqUrl.String(), err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		switch resp.StatusCode {
-		case http.StatusForbidden:
-			return &ratelimitData, fmt.Errorf("HTTP request failed %d %s: %s", resp.StatusCode, string(rawResp), "Forbidden - check your API token or permissions")
-		default:
-			return &ratelimitData, fmt.Errorf("HTTP request failed %d %s", resp.StatusCode, string(rawResp))
-		}
-	}
-	if err := json.Unmarshal(rawResp, res); err != nil {
-		return &ratelimitData, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		logBody(ctx, resp.Body)
+		return &ratelimitData, fmt.Errorf("unexpected status code %d for request %s: %s", resp.StatusCode, reqUrl.String(), http.StatusText(resp.StatusCode))
 	}
 	return &ratelimitData, nil
+}
+
+func logBody(ctx context.Context, bodyCloser io.ReadCloser) {
+	defer bodyCloser.Close()
+	l := ctxzap.Extract(ctx)
+	body := make([]byte, 1024*1024)
+	n, err := bodyCloser.Read(body)
+	if err != nil {
+		l.Error("error reading response body", zap.Error(err))
+		return
+	}
+	l.Info("response body: ", zap.String("body", string(body[:n])))
 }
