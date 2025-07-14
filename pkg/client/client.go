@@ -21,6 +21,7 @@ type Client struct {
 type openGraphHttpTransport struct {
 	base      http.RoundTripper
 	rateLimit *v2.RateLimitDescription
+	token     string
 }
 
 type Token struct {
@@ -47,7 +48,8 @@ func New(ctx context.Context, tokenSource oauth2.TokenSource) (*Client, error) {
 		return nil, fmt.Errorf("failed to create HTTP client: %w", err)
 	}
 	httpClient.Transport = &openGraphHttpTransport{
-		base: httpClient.Transport,
+		base:  httpClient.Transport,
+		token: token.AccessToken,
 	}
 	return &Client{
 		BaseHttpClient: uhttp.NewBaseHttpClient(httpClient),
@@ -68,5 +70,7 @@ func (t *openGraphHttpTransport) RoundTrip(request *http.Request) (*http.Respons
 			ResetAt: timestamppb.New(time.Now().Add(time.Minute)),
 		}
 	}
+
+	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", t.token))
 	return resp, nil
 }
