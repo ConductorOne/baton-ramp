@@ -43,7 +43,9 @@ func (c *Client) query(ctx context.Context, method string, requestURL string, re
 		uhttp.WithRatelimitData(&ratelimitData),
 	)
 	if err != nil {
-		logBody(ctx, resp.Body)
+		if resp != nil {
+			logBody(ctx, resp.Body)
+		}
 		return &ratelimitData, fmt.Errorf("failed to execute request %s: %w", reqUrl.String(), err)
 	}
 
