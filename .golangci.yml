@@ -33,7 +33,6 @@ linters:
     - unconvert
     - unused
     - usestdlibvars
-    - usetesting
     - whitespace
   settings:
     exhaustive:

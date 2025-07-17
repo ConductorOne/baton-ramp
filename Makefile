@@ -39,4 +39,4 @@ add-dep:
 
 .PHONY: lint
 lint:
-	golangci-lint run --out-format=colored-line-number --timeout=3m
+	golangci-lint run $(if ${CI},--out-format github-actions,)
