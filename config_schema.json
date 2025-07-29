@@ -1,10 +1,6 @@
 {
   "fields": [
     {
-      "name": "configField",
-      "stringField": {}
-    },
-    {
       "name": "log-level",
       "description": "The log level: debug, info, warn, error",
       "isOps": true,
@@ -47,6 +43,12 @@
       "description": "Disable OpenTelemetry tracing",
       "isOps": true,
       "boolField": {}
+    },
+    {
+      "name": "token",
+      "displayName": "Ramp Access Token",
+      "isSecret": true,
+      "stringField": {}
     }
   ],
   "displayName": "Ramp"
