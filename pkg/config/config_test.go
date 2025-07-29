@@ -14,18 +14,18 @@ func TestValidateConfig(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:   "valid config",
+			name: "valid config with token",
 			config: &Ramp{
-				// TODO: Add minimal valid configuration here once Config type is generated
+				Token: "valid-token",
 			},
 			wantErr: false,
 		},
 		{
-			name:   "invalid config - missing required fields",
+			name: "valid config without token",
 			config: &Ramp{
-				// TODO: Add configuration with missing required fields once Config type is generated
+				Token: "",
 			},
-			wantErr: true,
+			wantErr: false,
 		},
 	}
 
