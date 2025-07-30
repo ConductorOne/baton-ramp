@@ -74,14 +74,15 @@ func (o *roleBuilder) Entitlements(_ context.Context, resource *v2.Resource, _ *
 }
 
 func (o *roleBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
+	var annos annotations.Annotations
+
 	roleID := resource.Id.Resource
 
 	usersResponse, ratelimitData, err := o.client.ListUsers(ctx, pToken.Token)
 	if err != nil {
 		return nil, "", nil, fmt.Errorf("baton-ramp: error listing users for role %s: %w", resource.Id.Resource, err)
 	}
-	var annos *annotations.Annotations
-	annos = annos.WithRateLimiting(ratelimitData)
+	annos.WithRateLimiting(ratelimitData)
 
 	rv := []*v2.Grant{}
 	for _, user := range usersResponse.Users {
@@ -89,18 +90,18 @@ func (o *roleBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken 
 			continue
 		}
 
-		resourceId, err := resourceSdk.NewResourceID(userResourceType, user.ID)
+		resourceID, err := resourceSdk.NewResourceID(userResourceType, user.ID)
 		if err != nil {
-			return nil, "", *annos, fmt.Errorf("baton-ramp: failed to create resource ID for user %s: %w", user.ID, err)
+			return nil, "", annos, fmt.Errorf("baton-ramp: failed to create resource ID for user %s: %w", user.ID, err)
 		}
 
 		rv = append(rv, grant.NewGrant(
 			resource,
 			"member",
-			resourceId,
+			resourceID,
 		))
 	}
-	return rv, usersResponse.Pagination, *annos, nil
+	return rv, usersResponse.Pagination, annos, nil
 }
 
 func newRoleBuilder(client *client.Client) *roleBuilder {
