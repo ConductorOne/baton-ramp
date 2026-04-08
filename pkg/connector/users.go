@@ -7,8 +7,11 @@ import (
 	"github.com/conductorone/baton-ramp/pkg/client"
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
+	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
 	resourceSdk "github.com/conductorone/baton-sdk/pkg/types/resource"
+	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
+	"go.uber.org/zap"
 )
 
 type userBuilder struct {
@@ -67,6 +70,84 @@ func (o *userBuilder) Entitlements(_ context.Context, resource *v2.Resource, _ *
 // Grants always returns an empty slice for users since they don't have any entitlements.
 func (o *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
 	return nil, "", nil, nil
+}
+
+func (o *userBuilder) CreateAccountCapabilityDetails(ctx context.Context) (*v2.CredentialDetailsAccountProvisioning, annotations.Annotations, error) {
+	return &v2.CredentialDetailsAccountProvisioning{
+		SupportedCredentialOptions: []v2.CapabilityDetailCredentialOption{
+			v2.CapabilityDetailCredentialOption_CAPABILITY_DETAIL_CREDENTIAL_OPTION_NO_PASSWORD,
+		},
+		PreferredCredentialOption: v2.CapabilityDetailCredentialOption_CAPABILITY_DETAIL_CREDENTIAL_OPTION_NO_PASSWORD,
+	}, nil, nil
+}
+
+func (o *userBuilder) CreateAccount(
+	ctx context.Context,
+	accountInfo *v2.AccountInfo,
+	_ *v2.CredentialOptions,
+) (connectorbuilder.CreateAccountResponse, []*v2.PlaintextData, annotations.Annotations, error) {
+	var annos annotations.Annotations
+
+	profileFields := accountInfo.Profile.GetFields()
+
+	emailVal := profileFields["email"]
+	if emailVal == nil || emailVal.GetStringValue() == "" {
+		return nil, nil, nil, fmt.Errorf("ramp-connector: email is required for account creation")
+	}
+	email := emailVal.GetStringValue()
+
+	firstNameVal := profileFields["first_name"]
+	if firstNameVal == nil || firstNameVal.GetStringValue() == "" {
+		return nil, nil, nil, fmt.Errorf("ramp-connector: first_name is required for account creation")
+	}
+	firstName := firstNameVal.GetStringValue()
+
+	lastNameVal := profileFields["last_name"]
+	if lastNameVal == nil || lastNameVal.GetStringValue() == "" {
+		return nil, nil, nil, fmt.Errorf("ramp-connector: last_name is required for account creation")
+	}
+	lastName := lastNameVal.GetStringValue()
+
+	req := &client.CreateUserRequest{
+		Email:     email,
+		FirstName: firstName,
+		LastName:  lastName,
+	}
+
+	if roleVal := profileFields["role"]; roleVal != nil && roleVal.GetStringValue() != "" {
+		req.Role = roleVal.GetStringValue()
+	}
+
+	user, ratelimitData, err := o.client.CreateUser(ctx, req)
+	annos.WithRateLimiting(ratelimitData)
+	if err != nil {
+		return nil, nil, annos, fmt.Errorf("ramp-connector: failed to create user: %w", err)
+	}
+
+	if user.ID == "" {
+		ctxzap.Extract(ctx).Debug("ramp-connector: user created without ID, sync required to retrieve account",
+			zap.String("email", user.Email),
+		)
+		return &v2.CreateAccountResponse_ActionRequiredResult{
+			Message: "User was created in Ramp. Please sync to retrieve the user account.",
+		}, nil, annos, nil
+	}
+
+	resource, err := userResource(user)
+	if err != nil {
+		return nil, nil, annos, fmt.Errorf("ramp-connector: failed to create resource for new user: %w", err)
+	}
+	return &v2.CreateAccountResponse_SuccessResult{Resource: resource}, nil, annos, nil
+}
+
+func (o *userBuilder) Delete(ctx context.Context, resourceID *v2.ResourceId) (annotations.Annotations, error) {
+	var annos annotations.Annotations
+	ratelimitData, err := o.client.DeleteUser(ctx, resourceID.Resource)
+	annos.WithRateLimiting(ratelimitData)
+	if err != nil {
+		return annos, fmt.Errorf("ramp-connector: failed to delete user %s: %w", resourceID.Resource, err)
+	}
+	return annos, nil
 }
 
 func newUserBuilder(client *client.Client) *userBuilder {
