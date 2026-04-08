@@ -27,3 +27,21 @@ type Role struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 }
+
+type Vendor struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Code          string `json:"code"`
+	IsActive      bool   `json:"is_active"`
+	VendorOwnerID string `json:"vendor_owner_id"`
+}
+
+type VendorsList struct {
+	Page    Page      `json:"page"`
+	Vendors []*Vendor `json:"data"`
+}
+
+type VendorsResponse struct {
+	Vendors    []*Vendor
+	Pagination string
+}

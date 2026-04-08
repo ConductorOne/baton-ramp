@@ -1,7 +1,9 @@
 package client
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -49,6 +51,47 @@ func (c *Client) query(ctx context.Context, method string, requestURL string, re
 		return &ratelimitData, fmt.Errorf("failed to execute request %s: %w", reqUrl.String(), err)
 	}
 
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		logBody(ctx, resp.Body)
+		return &ratelimitData, fmt.Errorf("unexpected status code %d for request %s: %s", resp.StatusCode, reqUrl.String(), http.StatusText(resp.StatusCode))
+	}
+	return &ratelimitData, nil
+}
+
+func (c *Client) queryWithBody(ctx context.Context, method, requestURL string, body any, res any) (*v2.RateLimitDescription, error) {
+	var bodyReader io.Reader
+	if body != nil {
+		b, err := json.Marshal(body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal request body: %w", err)
+		}
+		bodyReader = bytes.NewReader(b)
+	}
+	reqUrl, err := url.Parse(requestURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse request URL %s: %w", requestURL, err)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, reqUrl.String(), bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request %s: %w", reqUrl.String(), err)
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	var ratelimitData v2.RateLimitDescription
+	doOpts := []uhttp.DoOption{uhttp.WithRatelimitData(&ratelimitData)}
+	if res != nil {
+		doOpts = append(doOpts, uhttp.WithJSONResponse(res))
+	}
+	resp, err := c.Do(req, doOpts...)
+	if err != nil {
+		if resp != nil {
+			logBody(ctx, resp.Body)
+		}
+		return &ratelimitData, fmt.Errorf("failed to execute request %s: %w", reqUrl.String(), err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		logBody(ctx, resp.Body)
