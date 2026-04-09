@@ -25,7 +25,7 @@ func main() {
 	_, cmd, err := config.DefineConfiguration(
 		ctx,
 		"baton-ramp",
-		getConnector[*cfg.Ramp],
+		getConnector,
 		cfg.Config,
 	)
 	if err != nil {
@@ -42,13 +42,13 @@ func main() {
 	}
 }
 
-func getConnector[T field.Configurable](ctx context.Context, config T) (types.ConnectorServer, error) {
+func getConnector(ctx context.Context, config *cfg.Ramp) (types.ConnectorServer, error) {
 	l := ctxzap.Extract(ctx)
 	if err := field.Validate(cfg.Config, config); err != nil {
 		return nil, err
 	}
 
-	cb, err := connector.New(ctx, connector.WithToken(ctx, config.GetString(cfg.Token.FieldName)))
+	cb, err := connector.New(ctx, connector.WithToken(ctx, config.Token))
 	if err != nil {
 		l.Error("error creating connector", zap.Error(err))
 		return nil, err
