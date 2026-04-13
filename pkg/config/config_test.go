@@ -25,7 +25,7 @@ func TestValidateConfig(t *testing.T) {
 			config: &Ramp{
 				Token: "",
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 	}
 
