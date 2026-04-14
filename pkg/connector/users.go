@@ -11,7 +11,8 @@ import (
 	"github.com/conductorone/baton-sdk/pkg/pagination"
 	resourceSdk "github.com/conductorone/baton-sdk/pkg/types/resource"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
-	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
 )
 
 type userBuilder struct {
@@ -92,19 +93,19 @@ func (o *userBuilder) CreateAccount(
 
 	emailVal := profileFields["email"]
 	if emailVal == nil || emailVal.GetStringValue() == "" {
-		return nil, nil, nil, fmt.Errorf("ramp-connector: email is required for account creation")
+		return nil, nil, nil, grpcstatus.Error(codes.InvalidArgument, "ramp-connector: email is required for account creation")
 	}
 	email := emailVal.GetStringValue()
 
 	firstNameVal := profileFields["first_name"]
 	if firstNameVal == nil || firstNameVal.GetStringValue() == "" {
-		return nil, nil, nil, fmt.Errorf("ramp-connector: first_name is required for account creation")
+		return nil, nil, nil, grpcstatus.Error(codes.InvalidArgument, "ramp-connector: first_name is required for account creation")
 	}
 	firstName := firstNameVal.GetStringValue()
 
 	lastNameVal := profileFields["last_name"]
 	if lastNameVal == nil || lastNameVal.GetStringValue() == "" {
-		return nil, nil, nil, fmt.Errorf("ramp-connector: last_name is required for account creation")
+		return nil, nil, nil, grpcstatus.Error(codes.InvalidArgument, "ramp-connector: last_name is required for account creation")
 	}
 	lastName := lastNameVal.GetStringValue()
 
@@ -115,7 +116,12 @@ func (o *userBuilder) CreateAccount(
 	}
 
 	if roleVal := profileFields["role"]; roleVal != nil && roleVal.GetStringValue() != "" {
-		req.Role = roleVal.GetStringValue()
+		role := roleVal.GetStringValue()
+		validRoles := map[string]bool{"ADMIN": true, "APPROVER": true, "FINANCE_MANAGER": true, "MANAGER": true, "USER": true}
+		if !validRoles[role] {
+			return nil, nil, nil, grpcstatus.Errorf(codes.InvalidArgument, "ramp-connector: invalid role %q, must be one of ADMIN, APPROVER, FINANCE_MANAGER, MANAGER, USER", role)
+		}
+		req.Role = role
 	}
 
 	user, ratelimitData, err := o.client.CreateUser(ctx, req)
@@ -125,9 +131,7 @@ func (o *userBuilder) CreateAccount(
 	}
 
 	if user.ID == "" {
-		ctxzap.Extract(ctx).Debug("ramp-connector: user created without ID, sync required to retrieve account",
-			zap.String("email", user.Email),
-		)
+		ctxzap.Extract(ctx).Debug("ramp-connector: user created without ID, sync required to retrieve account")
 		return &v2.CreateAccountResponse_ActionRequiredResult{
 			Message: "User was created in Ramp. Please sync to retrieve the user account.",
 		}, nil, annos, nil

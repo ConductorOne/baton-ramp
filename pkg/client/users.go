@@ -13,7 +13,6 @@ type CreateUserRequest struct {
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	Role      string `json:"role,omitempty"`
-	ManagerID string `json:"manager_id,omitempty"`
 }
 
 func (c *Client) ListUsers(ctx context.Context, pagination string) (*UsersResponse, *v2.RateLimitDescription, error) {

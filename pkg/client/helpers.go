@@ -30,33 +30,7 @@ func (c *Client) newUnPaginatedURL(path string, v url.Values) (string, error) {
 }
 
 func (c *Client) query(ctx context.Context, method string, requestURL string, res any) (*v2.RateLimitDescription, error) {
-	reqUrl, err := url.Parse(requestURL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse request URL %s: %w", requestURL, err)
-	}
-	req, err := http.NewRequestWithContext(ctx, method, reqUrl.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request %s: %w", reqUrl.String(), err)
-	}
-
-	var ratelimitData v2.RateLimitDescription
-	resp, err := c.Do(req,
-		uhttp.WithJSONResponse(res),
-		uhttp.WithRatelimitData(&ratelimitData),
-	)
-	if err != nil {
-		if resp != nil {
-			logBody(ctx, resp.Body)
-		}
-		return &ratelimitData, fmt.Errorf("failed to execute request %s: %w", reqUrl.String(), err)
-	}
-
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		logBody(ctx, resp.Body)
-		return &ratelimitData, fmt.Errorf("unexpected status code %d for request %s: %s", resp.StatusCode, reqUrl.String(), http.StatusText(resp.StatusCode))
-	}
-	return &ratelimitData, nil
+	return c.queryWithBody(ctx, method, requestURL, nil, res)
 }
 
 func (c *Client) queryWithBody(ctx context.Context, method, requestURL string, body any, res any) (*v2.RateLimitDescription, error) {
