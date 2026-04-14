@@ -8,6 +8,7 @@ var (
 	// Add the SchemaFields for the Config.
 	Token = field.StringField("token",
 		field.WithIsSecret(true),
+		field.WithRequired(true),
 		field.WithDisplayName("Ramp Access Token"),
 	)
 	ConfigurationFields = []field.SchemaField{Token}
@@ -23,4 +24,6 @@ var Config = field.NewConfiguration(
 	ConfigurationFields,
 	field.WithConstraints(FieldRelationships...),
 	field.WithConnectorDisplayName("Ramp"),
+	field.WithIconUrl("/static/app-icons/ramp.svg"),
+	field.WithHelpUrl("/docs/baton/ramp-v2"),
 )
