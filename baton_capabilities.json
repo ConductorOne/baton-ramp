@@ -26,9 +26,21 @@
         "CAPABILITY_SYNC"
       ],
       "permissions": {}
+    },
+    {
+      "resourceType": {
+        "id": "vendor",
+        "displayName": "Vendor"
+      },
+      "capabilities": [
+        "CAPABILITY_SYNC",
+        "CAPABILITY_PROVISION"
+      ],
+      "permissions": {}
     }
   ],
   "connectorCapabilities": [
+    "CAPABILITY_PROVISION",
     "CAPABILITY_SYNC"
   ],
   "credentialDetails": {}
