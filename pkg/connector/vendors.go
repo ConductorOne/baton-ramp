@@ -88,7 +88,8 @@ func (o *vendorBuilder) Grant(ctx context.Context, principal *v2.Resource, ent *
 		return nil, annos, fmt.Errorf("ramp-connector: failed to get vendor %s: %w", vendorID, err)
 	}
 	if vendor.VendorOwnerID == userID {
-		return nil, annotations.New(&v2.GrantAlreadyExists{}), nil
+		annos.Append(&v2.GrantAlreadyExists{})
+		return nil, annos, nil
 	}
 
 	ratelimitData, err = o.client.UpdateVendorOwner(ctx, vendorID, userID)
@@ -114,7 +115,8 @@ func (o *vendorBuilder) Revoke(ctx context.Context, g *v2.Grant) (annotations.An
 		return annos, fmt.Errorf("ramp-connector: failed to get vendor %s: %w", vendorID, err)
 	}
 	if vendor.VendorOwnerID != userID {
-		return annotations.New(&v2.GrantAlreadyRevoked{}), nil
+		annos.Append(&v2.GrantAlreadyRevoked{})
+		return annos, nil
 	}
 
 	ratelimitData, err = o.client.UpdateVendorOwner(ctx, vendorID, "")
