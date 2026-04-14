@@ -50,12 +50,11 @@ func (c *Client) query(ctx context.Context, method string, requestURL string, re
 		}
 		return &ratelimitData, fmt.Errorf("failed to execute request %s: %w", reqUrl.String(), err)
 	}
-
-	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		logBody(ctx, resp.Body)
 		return &ratelimitData, fmt.Errorf("unexpected status code %d for request %s: %s", resp.StatusCode, reqUrl.String(), http.StatusText(resp.StatusCode))
 	}
+	defer resp.Body.Close()
 	return &ratelimitData, nil
 }
 
@@ -92,11 +91,11 @@ func (c *Client) queryWithBody(ctx context.Context, method, requestURL string, b
 		}
 		return &ratelimitData, fmt.Errorf("failed to execute request %s: %w", reqUrl.String(), err)
 	}
-	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		logBody(ctx, resp.Body)
 		return &ratelimitData, fmt.Errorf("unexpected status code %d for request %s: %s", resp.StatusCode, reqUrl.String(), http.StatusText(resp.StatusCode))
 	}
+	defer resp.Body.Close()
 	return &ratelimitData, nil
 }
 

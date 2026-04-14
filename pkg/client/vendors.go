@@ -8,6 +8,8 @@ import (
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 )
 
+const vendorsPath = "vendors"
+
 // GET https://api.ramp.com/developer/v1/vendors
 // Required scope: accounting:read.
 // https://docs.ramp.com/developer-api/v1/api/vendors#get-developer-v1-vendors
@@ -16,7 +18,7 @@ func (c *Client) ListVendors(ctx context.Context, pagination string) (*VendorsRe
 	reqURL := pagination
 	if reqURL == "" {
 		var err error
-		reqURL, err = c.newUnPaginatedURL("vendors", nil)
+		reqURL, err = c.newUnPaginatedURL(vendorsPath, nil)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -35,7 +37,7 @@ func (c *Client) ListVendors(ctx context.Context, pagination string) (*VendorsRe
 // Required scope: accounting:read.
 // https://docs.ramp.com/developer-api/v1/api/vendors#get-developer-v1-vendors-id
 func (c *Client) GetVendor(ctx context.Context, vendorID string) (*Vendor, *v2.RateLimitDescription, error) {
-	reqURL, err := c.newUnPaginatedURL(fmt.Sprintf("vendors/%s", vendorID), nil)
+	reqURL, err := c.newUnPaginatedURL(fmt.Sprintf("%s/%s", vendorsPath, vendorID), nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -52,7 +54,7 @@ func (c *Client) GetVendor(ctx context.Context, vendorID string) (*Vendor, *v2.R
 // https://docs.ramp.com/developer-api/v1/api/vendors#patch-developer-v1-vendors-id
 // Sets or clears vendor_owner_id. Pass empty string ownerID to clear the owner.
 func (c *Client) UpdateVendorOwner(ctx context.Context, vendorID, ownerID string) (*v2.RateLimitDescription, error) {
-	reqURL, err := c.newUnPaginatedURL(fmt.Sprintf("vendors/%s", vendorID), nil)
+	reqURL, err := c.newUnPaginatedURL(fmt.Sprintf("%s/%s", vendorsPath, vendorID), nil)
 	if err != nil {
 		return nil, err
 	}

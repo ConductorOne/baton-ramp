@@ -28,7 +28,7 @@ func (o *vendorBuilder) List(ctx context.Context, parentResourceID *v2.ResourceI
 	resp, ratelimitData, err := o.client.ListVendors(ctx, pToken.Token)
 	annos.WithRateLimiting(ratelimitData)
 	if err != nil {
-		return nil, "", annos, err
+		return nil, "", annos, fmt.Errorf("ramp-connector: failed to list vendors: %w", err)
 	}
 
 	rv := make([]*v2.Resource, 0, len(resp.Vendors))
@@ -80,8 +80,18 @@ func (o *vendorBuilder) Grants(ctx context.Context, resource *v2.Resource, _ *pa
 func (o *vendorBuilder) Grant(ctx context.Context, principal *v2.Resource, ent *v2.Entitlement) ([]*v2.Grant, annotations.Annotations, error) {
 	vendorID := ent.Resource.Id.Resource
 	userID := principal.Id.Resource
-	ratelimitData, err := o.client.UpdateVendorOwner(ctx, vendorID, userID)
 	var annos annotations.Annotations
+
+	vendor, ratelimitData, err := o.client.GetVendor(ctx, vendorID)
+	annos.WithRateLimiting(ratelimitData)
+	if err != nil {
+		return nil, annos, fmt.Errorf("ramp-connector: failed to get vendor %s: %w", vendorID, err)
+	}
+	if vendor.VendorOwnerID == userID {
+		return nil, annotations.New(&v2.GrantAlreadyExists{}), nil
+	}
+
+	ratelimitData, err = o.client.UpdateVendorOwner(ctx, vendorID, userID)
 	annos.WithRateLimiting(ratelimitData)
 	if err != nil {
 		return nil, annos, fmt.Errorf("ramp-connector: failed to grant vendor owner for vendor %s: %w", vendorID, err)
@@ -95,8 +105,19 @@ func (o *vendorBuilder) Grant(ctx context.Context, principal *v2.Resource, ent *
 
 func (o *vendorBuilder) Revoke(ctx context.Context, g *v2.Grant) (annotations.Annotations, error) {
 	vendorID := g.Entitlement.Resource.Id.Resource
-	ratelimitData, err := o.client.UpdateVendorOwner(ctx, vendorID, "")
+	userID := g.Principal.Id.Resource
 	var annos annotations.Annotations
+
+	vendor, ratelimitData, err := o.client.GetVendor(ctx, vendorID)
+	annos.WithRateLimiting(ratelimitData)
+	if err != nil {
+		return annos, fmt.Errorf("ramp-connector: failed to get vendor %s: %w", vendorID, err)
+	}
+	if vendor.VendorOwnerID != userID {
+		return annotations.New(&v2.GrantAlreadyRevoked{}), nil
+	}
+
+	ratelimitData, err = o.client.UpdateVendorOwner(ctx, vendorID, "")
 	annos.WithRateLimiting(ratelimitData)
 	if err != nil {
 		return annos, fmt.Errorf("ramp-connector: failed to revoke vendor owner for vendor %s: %w", vendorID, err)
