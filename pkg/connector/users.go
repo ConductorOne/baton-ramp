@@ -117,31 +117,34 @@ func (o *userBuilder) CreateAccount(
 
 	if roleVal := profileFields["role"]; roleVal != nil && roleVal.GetStringValue() != "" {
 		role := roleVal.GetStringValue()
-		validRoles := map[string]bool{"ADMIN": true, "APPROVER": true, "FINANCE_MANAGER": true, "MANAGER": true, "USER": true}
+		validRoles := map[string]bool{
+			"AUDITOR":              true,
+			"BUSINESS_ADMIN":       true,
+			"BUSINESS_BOOKKEEPER":  true,
+			"BUSINESS_OWNER":       true,
+			"BUSINESS_USER":        true,
+			"GUEST_USER":           true,
+			"IT_ADMIN":             true,
+		}
 		if !validRoles[role] {
-			return nil, nil, nil, grpcstatus.Errorf(codes.InvalidArgument, "ramp-connector: invalid role %q, must be one of ADMIN, APPROVER, FINANCE_MANAGER, MANAGER, USER", role)
+			return nil, nil, nil, grpcstatus.Errorf(codes.InvalidArgument,
+				"ramp-connector: invalid role %q, must be one of AUDITOR, BUSINESS_ADMIN, BUSINESS_BOOKKEEPER, BUSINESS_OWNER, BUSINESS_USER, GUEST_USER, IT_ADMIN",
+				role)
 		}
 		req.Role = role
 	}
 
-	user, ratelimitData, err := o.client.CreateUser(ctx, req)
+	_, ratelimitData, err := o.client.CreateUser(ctx, req)
 	annos.WithRateLimiting(ratelimitData)
 	if err != nil {
 		return nil, nil, annos, fmt.Errorf("ramp-connector: failed to create user: %w", err)
 	}
 
-	if user.ID == "" {
-		ctxzap.Extract(ctx).Debug("ramp-connector: user created without ID, sync required to retrieve account")
-		return &v2.CreateAccountResponse_ActionRequiredResult{
-			Message: "User was created in Ramp. Please sync to retrieve the user account.",
-		}, nil, annos, nil
-	}
-
-	resource, err := userResource(user)
-	if err != nil {
-		return nil, nil, annos, fmt.Errorf("ramp-connector: failed to create resource for new user: %w", err)
-	}
-	return &v2.CreateAccountResponse_SuccessResult{Resource: resource}, nil, annos, nil
+	ctxzap.Extract(ctx).Debug("ramp-connector: user invite sent, sync required to retrieve account")
+	return &v2.CreateAccountResponse_ActionRequiredResult{
+		Message:               "User invite sent. Please sync after the user accepts the invite to retrieve their account.",
+		IsCreateAccountResult: true,
+	}, nil, annos, nil
 }
 
 func (o *userBuilder) Delete(ctx context.Context, resourceID *v2.ResourceId) (annotations.Annotations, error) {
