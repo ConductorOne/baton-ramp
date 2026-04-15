@@ -68,7 +68,7 @@ func (c *Client) queryWithBody(ctx context.Context, method, requestURL string, b
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		logBody(ctx, resp.Body)
+		logBody(ctx, io.NopCloser(resp.Body))
 		return &ratelimitData, fmt.Errorf("unexpected status code %d for request %s: %s", resp.StatusCode, reqUrl.String(), http.StatusText(resp.StatusCode))
 	}
 	return &ratelimitData, nil

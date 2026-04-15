@@ -50,6 +50,7 @@ func userResource(u *client.User) (*v2.Resource, error) {
 		resourceSdk.WithUserTrait(
 			resourceSdk.WithEmail(u.Email, true),
 			resourceSdk.WithStatus(status),
+			resourceSdk.WithUserLogin(u.Email),
 		),
 	)
 }
@@ -147,7 +148,7 @@ func (o *userBuilder) CreateAccount(
 
 	ctxzap.Extract(ctx).Debug("ramp-connector: user invite sent, sync required to retrieve account", zap.String("task_id", task.ID))
 	return &v2.CreateAccountResponse_ActionRequiredResult{
-		Message:               "User invite sent. Please sync after the user accepts the invite to retrieve their account.",
+		Message:               fmt.Sprintf("User invite sent (task %s). Please sync after the user accepts the invite to retrieve their account.", task.ID),
 		IsCreateAccountResult: true,
 	}, nil, annos, nil
 }
