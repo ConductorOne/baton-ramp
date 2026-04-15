@@ -100,6 +100,9 @@ func (c *Client) queryWithBody(ctx context.Context, method, requestURL string, b
 }
 
 func logBody(ctx context.Context, bodyCloser io.ReadCloser) {
+	if bodyCloser == nil {
+		return
+	}
 	defer bodyCloser.Close()
 	l := ctxzap.Extract(ctx)
 	body := make([]byte, 1024*1024)

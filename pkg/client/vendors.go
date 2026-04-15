@@ -25,7 +25,7 @@ func (c *Client) ListVendors(ctx context.Context, pagination string) (*VendorsRe
 	}
 	ratelimitData, err := c.query(ctx, http.MethodGet, reqURL, vendors)
 	if err != nil {
-		return nil, ratelimitData, fmt.Errorf("ramp-connector: error listing vendors: %w", err)
+		return nil, ratelimitData, fmt.Errorf("baton-ramp: error listing vendors: %w", err)
 	}
 	return &VendorsResponse{
 		Vendors:    vendors.Vendors,
@@ -44,7 +44,7 @@ func (c *Client) GetVendor(ctx context.Context, vendorID string) (*Vendor, *v2.R
 	vendor := &Vendor{}
 	ratelimitData, err := c.query(ctx, http.MethodGet, reqURL, vendor)
 	if err != nil {
-		return nil, ratelimitData, fmt.Errorf("ramp-connector: error getting vendor %s: %w", vendorID, err)
+		return nil, ratelimitData, fmt.Errorf("baton-ramp: error getting vendor %s: %w", vendorID, err)
 	}
 	return vendor, ratelimitData, nil
 }
@@ -68,7 +68,7 @@ func (c *Client) UpdateVendorOwner(ctx context.Context, vendorID, ownerID string
 	var result Vendor
 	ratelimitData, err := c.queryWithBody(ctx, http.MethodPatch, reqURL, body, &result)
 	if err != nil {
-		return ratelimitData, fmt.Errorf("ramp-connector: error updating vendor owner for %s: %w", vendorID, err)
+		return ratelimitData, fmt.Errorf("baton-ramp: error updating vendor owner for %s: %w", vendorID, err)
 	}
 	return ratelimitData, nil
 }

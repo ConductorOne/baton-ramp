@@ -28,7 +28,7 @@ func (o *vendorBuilder) List(ctx context.Context, parentResourceID *v2.ResourceI
 	resp, ratelimitData, err := o.client.ListVendors(ctx, pToken.Token)
 	annos.WithRateLimiting(ratelimitData)
 	if err != nil {
-		return nil, "", annos, fmt.Errorf("ramp-connector: failed to list vendors: %w", err)
+		return nil, "", annos, fmt.Errorf("baton-ramp: failed to list vendors: %w", err)
 	}
 
 	rv := make([]*v2.Resource, 0, len(resp.Vendors))
@@ -39,7 +39,7 @@ func (o *vendorBuilder) List(ctx context.Context, parentResourceID *v2.ResourceI
 			vendor.ID,
 		)
 		if err != nil {
-			return nil, "", annos, fmt.Errorf("ramp-connector: failed to create vendor resource %s: %w", vendor.ID, err)
+			return nil, "", annos, fmt.Errorf("baton-ramp: failed to create vendor resource %s: %w", vendor.ID, err)
 		}
 		rv = append(rv, resource)
 	}
@@ -63,14 +63,14 @@ func (o *vendorBuilder) Grants(ctx context.Context, resource *v2.Resource, _ *pa
 	vendor, ratelimitData, err := o.client.GetVendor(ctx, resource.Id.Resource)
 	annos.WithRateLimiting(ratelimitData)
 	if err != nil {
-		return nil, "", annos, fmt.Errorf("ramp-connector: failed to get vendor %s: %w", resource.Id.Resource, err)
+		return nil, "", annos, fmt.Errorf("baton-ramp: failed to get vendor %s: %w", resource.Id.Resource, err)
 	}
 	if vendor.VendorOwnerID == "" {
 		return nil, "", annos, nil
 	}
 	principalID, err := resourceSdk.NewResourceID(userResourceType, vendor.VendorOwnerID)
 	if err != nil {
-		return nil, "", annos, fmt.Errorf("ramp-connector: failed to create resource ID for vendor owner %s: %w", vendor.VendorOwnerID, err)
+		return nil, "", annos, fmt.Errorf("baton-ramp: failed to create resource ID for vendor owner %s: %w", vendor.VendorOwnerID, err)
 	}
 	return []*v2.Grant{
 		grant.NewGrant(resource, vendorOwnerEntitlement, principalID),
@@ -85,7 +85,7 @@ func (o *vendorBuilder) Grant(ctx context.Context, principal *v2.Resource, ent *
 	vendor, ratelimitData, err := o.client.GetVendor(ctx, vendorID)
 	annos.WithRateLimiting(ratelimitData)
 	if err != nil {
-		return nil, annos, fmt.Errorf("ramp-connector: failed to get vendor %s: %w", vendorID, err)
+		return nil, annos, fmt.Errorf("baton-ramp: failed to get vendor %s: %w", vendorID, err)
 	}
 	if vendor.VendorOwnerID == userID {
 		annos.Append(&v2.GrantAlreadyExists{})
@@ -95,11 +95,11 @@ func (o *vendorBuilder) Grant(ctx context.Context, principal *v2.Resource, ent *
 	ratelimitData, err = o.client.UpdateVendorOwner(ctx, vendorID, userID)
 	annos.WithRateLimiting(ratelimitData)
 	if err != nil {
-		return nil, annos, fmt.Errorf("ramp-connector: failed to grant vendor owner for vendor %s: %w", vendorID, err)
+		return nil, annos, fmt.Errorf("baton-ramp: failed to grant vendor owner for vendor %s: %w", vendorID, err)
 	}
 	principalID, err := resourceSdk.NewResourceID(userResourceType, userID)
 	if err != nil {
-		return nil, annos, fmt.Errorf("ramp-connector: failed to create resource ID for user %s: %w", userID, err)
+		return nil, annos, fmt.Errorf("baton-ramp: failed to create resource ID for user %s: %w", userID, err)
 	}
 	return []*v2.Grant{grant.NewGrant(ent.Resource, vendorOwnerEntitlement, principalID)}, annos, nil
 }
@@ -112,7 +112,7 @@ func (o *vendorBuilder) Revoke(ctx context.Context, g *v2.Grant) (annotations.An
 	vendor, ratelimitData, err := o.client.GetVendor(ctx, vendorID)
 	annos.WithRateLimiting(ratelimitData)
 	if err != nil {
-		return annos, fmt.Errorf("ramp-connector: failed to get vendor %s: %w", vendorID, err)
+		return annos, fmt.Errorf("baton-ramp: failed to get vendor %s: %w", vendorID, err)
 	}
 	if vendor.VendorOwnerID != userID {
 		annos.Append(&v2.GrantAlreadyRevoked{})
@@ -122,7 +122,7 @@ func (o *vendorBuilder) Revoke(ctx context.Context, g *v2.Grant) (annotations.An
 	ratelimitData, err = o.client.UpdateVendorOwner(ctx, vendorID, "")
 	annos.WithRateLimiting(ratelimitData)
 	if err != nil {
-		return annos, fmt.Errorf("ramp-connector: failed to revoke vendor owner for vendor %s: %w", vendorID, err)
+		return annos, fmt.Errorf("baton-ramp: failed to revoke vendor owner for vendor %s: %w", vendorID, err)
 	}
 	return annos, nil
 }
