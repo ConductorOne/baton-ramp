@@ -65,7 +65,7 @@ func (d *Connector) Metadata(ctx context.Context) (*v2.ConnectorMetadata, error)
 				},
 				"role": {
 					DisplayName: "Role",
-					Description: "One of: ADMIN, APPROVER, FINANCE_MANAGER, MANAGER, USER",
+					Description: "One of: AUDITOR, BUSINESS_ADMIN, BUSINESS_BOOKKEEPER, BUSINESS_OWNER, BUSINESS_USER, GUEST_USER, IT_ADMIN",
 					Required:    false,
 					Order:       4,
 					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{

@@ -11,9 +11,23 @@ import (
 	"github.com/conductorone/baton-sdk/pkg/pagination"
 	resourceSdk "github.com/conductorone/baton-sdk/pkg/types/resource"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	grpcstatus "google.golang.org/grpc/status"
 )
+
+// validCreateRoles is the set of roles the Ramp API accepts when creating a user via the deferred endpoint.
+// This differs from the roles returned during sync (roles.go): AUDITOR and GUEST_USER are accepted at
+// creation but not returned as assignable roles in the listing, so both sets must be maintained separately.
+var validCreateRoles = map[string]bool{
+	"AUDITOR":             true,
+	"BUSINESS_ADMIN":      true,
+	"BUSINESS_BOOKKEEPER": true,
+	"BUSINESS_OWNER":      true,
+	"BUSINESS_USER":       true,
+	"GUEST_USER":          true,
+	"IT_ADMIN":            true,
+}
 
 type userBuilder struct {
 	client *client.Client
@@ -117,16 +131,7 @@ func (o *userBuilder) CreateAccount(
 
 	if roleVal := profileFields["role"]; roleVal != nil && roleVal.GetStringValue() != "" {
 		role := roleVal.GetStringValue()
-		validRoles := map[string]bool{
-			"AUDITOR":              true,
-			"BUSINESS_ADMIN":       true,
-			"BUSINESS_BOOKKEEPER":  true,
-			"BUSINESS_OWNER":       true,
-			"BUSINESS_USER":        true,
-			"GUEST_USER":           true,
-			"IT_ADMIN":             true,
-		}
-		if !validRoles[role] {
+		if !validCreateRoles[role] {
 			return nil, nil, nil, grpcstatus.Errorf(codes.InvalidArgument,
 				"ramp-connector: invalid role %q, must be one of AUDITOR, BUSINESS_ADMIN, BUSINESS_BOOKKEEPER, BUSINESS_OWNER, BUSINESS_USER, GUEST_USER, IT_ADMIN",
 				role)
@@ -134,13 +139,13 @@ func (o *userBuilder) CreateAccount(
 		req.Role = role
 	}
 
-	_, ratelimitData, err := o.client.CreateUser(ctx, req)
+	task, ratelimitData, err := o.client.CreateUser(ctx, req)
 	annos.WithRateLimiting(ratelimitData)
 	if err != nil {
 		return nil, nil, annos, fmt.Errorf("ramp-connector: failed to create user: %w", err)
 	}
 
-	ctxzap.Extract(ctx).Debug("ramp-connector: user invite sent, sync required to retrieve account")
+	ctxzap.Extract(ctx).Debug("ramp-connector: user invite sent, sync required to retrieve account", zap.String("task_id", task.ID))
 	return &v2.CreateAccountResponse_ActionRequiredResult{
 		Message:               "User invite sent. Please sync after the user accepts the invite to retrieve their account.",
 		IsCreateAccountResult: true,
