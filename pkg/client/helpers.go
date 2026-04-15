@@ -83,5 +83,5 @@ func logBody(ctx context.Context, bodyCloser io.ReadCloser) {
 		l.Error("error reading response body", zap.Error(err))
 		return
 	}
-	l.Info("response body: ", zap.String("body", string(body[:n])))
+	l.Debug("response body: ", zap.String("body", string(body[:n])))
 }
