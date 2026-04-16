@@ -46,7 +46,7 @@ func main() {
 	}
 }
 
-const rampTokenURL = "https://api.ramp.com/developer/v1/token"
+const rampOAuthEndpoint = "https://api.ramp.com/developer/v1/token"
 
 func getConnector(ctx context.Context, cc *cfg.Ramp, runTimeOpts cli.RunTimeOpts) (types.ConnectorServer, error) {
 	l := ctxzap.Extract(ctx)
@@ -61,7 +61,7 @@ func getConnector(ctx context.Context, cc *cfg.Ramp, runTimeOpts cli.RunTimeOpts
 		ccCfg := &clientcredentials.Config{
 			ClientID:     cc.RampClientID,
 			ClientSecret: cc.RampClientSecret,
-			TokenURL:     rampTokenURL,
+			TokenURL:     rampOAuthEndpoint,
 		}
 		connectorOpt = connector.WithTokenSource(ctx, ccCfg.TokenSource(ctx))
 	default:
@@ -69,7 +69,7 @@ func getConnector(ctx context.Context, cc *cfg.Ramp, runTimeOpts cli.RunTimeOpts
 			ccCfg := &clientcredentials.Config{
 				ClientID:     cc.RampClientID,
 				ClientSecret: cc.RampClientSecret,
-				TokenURL:     rampTokenURL,
+				TokenURL:     rampOAuthEndpoint,
 			}
 			connectorOpt = connector.WithTokenSource(ctx, ccCfg.TokenSource(ctx))
 		} else {
