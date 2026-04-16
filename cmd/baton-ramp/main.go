@@ -50,7 +50,7 @@ const rampTokenURL = "https://api.ramp.com/developer/v1/token"
 
 func getConnector(ctx context.Context, cc *cfg.Ramp, runTimeOpts cli.RunTimeOpts) (types.ConnectorServer, error) {
 	l := ctxzap.Extract(ctx)
-	if err := field.Validate(cfg.Config, cc); err != nil {
+	if err := field.Validate(cfg.Config, cc, field.WithAuthMethod(runTimeOpts.SelectedAuthMethod)); err != nil {
 		return nil, err
 	}
 
