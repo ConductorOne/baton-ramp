@@ -124,20 +124,22 @@ func (o *userBuilder) CreateAccount(
 	}
 	lastName := lastNameVal.GetStringValue()
 
+	roleVal := profileFields["role"]
+	if roleVal == nil || roleVal.GetStringValue() == "" {
+		return nil, nil, nil, grpcstatus.Error(codes.InvalidArgument, "ramp-connector: role is required for account creation")
+	}
+	role := roleVal.GetStringValue()
+	if !validCreateRoles[role] {
+		return nil, nil, nil, grpcstatus.Errorf(codes.InvalidArgument,
+			"ramp-connector: invalid role %q, must be one of AUDITOR, BUSINESS_ADMIN, BUSINESS_BOOKKEEPER, BUSINESS_OWNER, BUSINESS_USER, GUEST_USER, IT_ADMIN",
+			role)
+	}
+
 	req := &client.CreateUserRequest{
 		Email:     email,
 		FirstName: firstName,
 		LastName:  lastName,
-	}
-
-	if roleVal := profileFields["role"]; roleVal != nil && roleVal.GetStringValue() != "" {
-		role := roleVal.GetStringValue()
-		if !validCreateRoles[role] {
-			return nil, nil, nil, grpcstatus.Errorf(codes.InvalidArgument,
-				"ramp-connector: invalid role %q, must be one of AUDITOR, BUSINESS_ADMIN, BUSINESS_BOOKKEEPER, BUSINESS_OWNER, BUSINESS_USER, GUEST_USER, IT_ADMIN",
-				role)
-		}
-		req.Role = role
+		Role:      role,
 	}
 
 	task, ratelimitData, err := o.client.CreateUser(ctx, req)
@@ -151,16 +153,6 @@ func (o *userBuilder) CreateAccount(
 		Message:               fmt.Sprintf("User invite sent (task %s). Please sync after the user accepts the invite to retrieve their account.", task.ID),
 		IsCreateAccountResult: true,
 	}, nil, annos, nil
-}
-
-func (o *userBuilder) Delete(ctx context.Context, resourceID *v2.ResourceId) (annotations.Annotations, error) {
-	var annos annotations.Annotations
-	ratelimitData, err := o.client.DeleteUser(ctx, resourceID.Resource)
-	annos.WithRateLimiting(ratelimitData)
-	if err != nil {
-		return annos, fmt.Errorf("ramp-connector: failed to delete user %s: %w", resourceID.Resource, err)
-	}
-	return annos, nil
 }
 
 func newUserBuilder(client *client.Client) *userBuilder {
