@@ -39,6 +39,14 @@ var roles = []client.Role{
 		ID:   "IT_ADMIN",
 		Name: "IT Admin",
 	},
+	{
+		ID:   "AUDITOR",
+		Name: "Auditor",
+	},
+	{
+		ID:   "GUEST_USER",
+		Name: "Guest",
+	},
 }
 
 func (o *roleBuilder) ResourceType(ctx context.Context) *v2.ResourceType {
@@ -86,7 +94,7 @@ func (o *roleBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken 
 
 	rv := []*v2.Grant{}
 	for _, user := range usersResponse.Users {
-		if !strings.Contains(roleID, user.Role) {
+		if strings.TrimPrefix(roleID, "role:") != user.Role {
 			continue
 		}
 
