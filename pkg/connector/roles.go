@@ -18,6 +18,8 @@ type roleBuilder struct {
 	client *client.Client
 }
 
+// roles is the complete set of role values returned by the Ramp API.
+// See https://docs.ramp.com/developer-api/v1/api/users for the role enum.
 var roles = []client.Role{
 	{
 		ID:   "BUSINESS_ADMIN",
