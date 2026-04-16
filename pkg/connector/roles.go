@@ -94,6 +94,8 @@ func (o *roleBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken 
 
 	rv := []*v2.Grant{}
 	for _, user := range usersResponse.Users {
+		// Use exact match after stripping the "role:" prefix.
+		// strings.Contains would produce false positives — e.g. "role:GUEST_USER" contains "USER".
 		if strings.TrimPrefix(roleID, "role:") != user.Role {
 			continue
 		}
