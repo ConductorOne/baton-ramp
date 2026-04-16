@@ -95,13 +95,34 @@
     {
       "name": "token",
       "displayName": "Ramp Access Token",
-      "isRequired": true,
       "isSecret": true,
-      "stringField": {
-        "rules": {
-          "isRequired": true
-        }
-      }
+      "stringField": {}
+    },
+    {
+      "name": "client-id",
+      "displayName": "Ramp OAuth Client ID",
+      "stringField": {}
+    },
+    {
+      "name": "client-secret",
+      "displayName": "Ramp OAuth Client Secret",
+      "isSecret": true,
+      "stringField": {}
+    }
+  ],
+  "fieldGroups": [
+    {
+      "name": "access_token",
+      "displayName": "Access Token",
+      "helpText": "Authenticate using a Ramp API access token.",
+      "fields": ["token"],
+      "isDefault": true
+    },
+    {
+      "name": "client_credentials",
+      "displayName": "OAuth 2.0 Client Credentials",
+      "helpText": "Authenticate using OAuth 2.0 client credentials.",
+      "fields": ["client-id", "client-secret"]
     }
   ],
   "displayName": "Ramp",

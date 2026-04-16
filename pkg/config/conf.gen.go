@@ -4,7 +4,9 @@ package config
 import "reflect" 
 
 type Ramp struct {
-	Token string `mapstructure:"token"`
+	Token        string `mapstructure:"token"`
+	ClientId     string `mapstructure:"client-id"`
+	ClientSecret string `mapstructure:"client-secret"`
 }
 
 func (c *Ramp) findFieldByTag(tagValue string) (any, bool) {

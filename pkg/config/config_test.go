@@ -9,29 +9,57 @@ import (
 
 func TestValidateConfig(t *testing.T) {
 	tests := []struct {
-		name    string
-		config  *Ramp
-		wantErr bool
+		name      string
+		config    *Ramp
+		authGroup string
+		wantErr   bool
 	}{
 		{
 			name: "valid config with token",
 			config: &Ramp{
 				Token: "valid-token",
 			},
-			wantErr: false,
+			authGroup: AccessTokenGroup,
+			wantErr:   false,
 		},
 		{
-			name: "valid config without token",
+			name: "invalid config without token in access_token group",
 			config: &Ramp{
 				Token: "",
 			},
-			wantErr: true,
+			authGroup: AccessTokenGroup,
+			wantErr:   true,
+		},
+		{
+			name: "valid config with client credentials",
+			config: &Ramp{
+				ClientId:     "my-client-id",
+				ClientSecret: "my-client-secret",
+			},
+			authGroup: ClientCredentialsGroup,
+			wantErr:   false,
+		},
+		{
+			name: "invalid config with only client id",
+			config: &Ramp{
+				ClientId: "my-client-id",
+			},
+			authGroup: ClientCredentialsGroup,
+			wantErr:   true,
+		},
+		{
+			name: "invalid config with only client secret",
+			config: &Ramp{
+				ClientSecret: "my-client-secret",
+			},
+			authGroup: ClientCredentialsGroup,
+			wantErr:   true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := field.Validate(Config, tt.config)
+			err := field.Validate(Config, tt.config, field.WithAuthMethod(tt.authGroup))
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {

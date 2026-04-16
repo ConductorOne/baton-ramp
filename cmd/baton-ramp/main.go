@@ -9,6 +9,7 @@ import (
 
 	cfg "github.com/conductorone/baton-ramp/pkg/config"
 	"github.com/conductorone/baton-ramp/pkg/connector"
+	"github.com/conductorone/baton-sdk/pkg/cli"
 	"github.com/conductorone/baton-sdk/pkg/config"
 	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
 	"github.com/conductorone/baton-sdk/pkg/connectorrunner"
@@ -16,6 +17,7 @@ import (
 	"github.com/conductorone/baton-sdk/pkg/types"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 	"go.uber.org/zap"
+	"golang.org/x/oauth2/clientcredentials"
 )
 
 var version = "dev"
@@ -23,7 +25,7 @@ var version = "dev"
 func main() {
 	ctx := context.Background()
 
-	_, cmd, err := config.DefineConfiguration(
+	_, cmd, err := config.DefineConfigurationV2(
 		ctx,
 		"baton-ramp",
 		getConnector,
@@ -44,21 +46,48 @@ func main() {
 	}
 }
 
-func getConnector(ctx context.Context, config *cfg.Ramp) (types.ConnectorServer, error) {
+const rampTokenURL = "https://api.ramp.com/developer/v1/token"
+
+func getConnector(ctx context.Context, cc *cfg.Ramp, runTimeOpts cli.RunTimeOpts) (types.ConnectorServer, error) {
 	l := ctxzap.Extract(ctx)
-	if err := field.Validate(cfg.Config, config); err != nil {
+	if err := field.Validate(cfg.Config, cc); err != nil {
 		return nil, err
 	}
 
-	cb, err := connector.New(ctx, connector.WithToken(ctx, config.Token))
+	var connectorOpt connector.Option
+
+	switch runTimeOpts.SelectedAuthMethod {
+	case cfg.ClientCredentialsGroup:
+		ccCfg := &clientcredentials.Config{
+			ClientID:     cc.ClientId,
+			ClientSecret: cc.ClientSecret,
+			TokenURL:     rampTokenURL,
+		}
+		connectorOpt = connector.WithTokenSource(ctx, ccCfg.TokenSource(ctx))
+	default:
+		if cc.ClientId != "" && cc.ClientSecret != "" {
+			ccCfg := &clientcredentials.Config{
+				ClientID:     cc.ClientId,
+				ClientSecret: cc.ClientSecret,
+				TokenURL:     rampTokenURL,
+			}
+			connectorOpt = connector.WithTokenSource(ctx, ccCfg.TokenSource(ctx))
+		} else {
+			connectorOpt = connector.WithToken(ctx, cc.Token)
+		}
+	}
+
+	cb, err := connector.New(ctx, connectorOpt)
 	if err != nil {
 		l.Error("error creating connector", zap.Error(err))
 		return nil, err
 	}
-	connector, err := connectorbuilder.NewConnector(ctx, cb)
+
+	c, err := connectorbuilder.NewConnector(ctx, cb)
 	if err != nil {
 		l.Error("error creating connector", zap.Error(err))
 		return nil, err
 	}
-	return connector, nil
+
+	return c, nil
 }
