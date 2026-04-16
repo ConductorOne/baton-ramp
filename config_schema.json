@@ -99,12 +99,12 @@
       "stringField": {}
     },
     {
-      "name": "client-id",
+      "name": "ramp-client-id",
       "displayName": "Ramp OAuth Client ID",
       "stringField": {}
     },
     {
-      "name": "client-secret",
+      "name": "ramp-client-secret",
       "displayName": "Ramp OAuth Client Secret",
       "isSecret": true,
       "stringField": {}
@@ -122,7 +122,7 @@
       "name": "client_credentials",
       "displayName": "OAuth 2.0 Client Credentials",
       "helpText": "Authenticate using OAuth 2.0 client credentials.",
-      "fields": ["client-id", "client-secret"]
+      "fields": ["ramp-client-id", "ramp-client-secret"]
     }
   ],
   "displayName": "Ramp",

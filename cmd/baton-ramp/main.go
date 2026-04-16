@@ -59,16 +59,16 @@ func getConnector(ctx context.Context, cc *cfg.Ramp, runTimeOpts cli.RunTimeOpts
 	switch runTimeOpts.SelectedAuthMethod {
 	case cfg.ClientCredentialsGroup:
 		ccCfg := &clientcredentials.Config{
-			ClientID:     cc.ClientId,
-			ClientSecret: cc.ClientSecret,
+			ClientID:     cc.RampClientID,
+			ClientSecret: cc.RampClientSecret,
 			TokenURL:     rampTokenURL,
 		}
 		connectorOpt = connector.WithTokenSource(ctx, ccCfg.TokenSource(ctx))
 	default:
-		if cc.ClientId != "" && cc.ClientSecret != "" {
+		if cc.RampClientID != "" && cc.RampClientSecret != "" {
 			ccCfg := &clientcredentials.Config{
-				ClientID:     cc.ClientId,
-				ClientSecret: cc.ClientSecret,
+				ClientID:     cc.RampClientID,
+				ClientSecret: cc.RampClientSecret,
 				TokenURL:     rampTokenURL,
 			}
 			connectorOpt = connector.WithTokenSource(ctx, ccCfg.TokenSource(ctx))

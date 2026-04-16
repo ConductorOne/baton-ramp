@@ -16,23 +16,23 @@ var (
 		field.WithDisplayName("Ramp Access Token"),
 	)
 
-	ClientID = field.StringField("client-id",
+	RampClientID = field.StringField("ramp-client-id",
 		field.WithRequired(true),
 		field.WithDisplayName("Ramp OAuth Client ID"),
 	)
 
-	ClientSecret = field.StringField("client-secret",
+	RampClientSecret = field.StringField("ramp-client-secret",
 		field.WithIsSecret(true),
 		field.WithRequired(true),
 		field.WithDisplayName("Ramp OAuth Client Secret"),
 	)
 
-	ConfigurationFields = []field.SchemaField{Token, ClientID, ClientSecret}
+	ConfigurationFields = []field.SchemaField{Token, RampClientID, RampClientSecret}
 
 	FieldRelationships = []field.SchemaFieldRelationship{
-		field.FieldsMutuallyExclusive(Token, ClientID),
-		field.FieldsMutuallyExclusive(Token, ClientSecret),
-		field.FieldsRequiredTogether(ClientID, ClientSecret),
+		field.FieldsMutuallyExclusive(Token, RampClientID),
+		field.FieldsMutuallyExclusive(Token, RampClientSecret),
+		field.FieldsRequiredTogether(RampClientID, RampClientSecret),
 	}
 
 	ConfigurationFieldGroups = []field.SchemaFieldGroup{
@@ -47,7 +47,7 @@ var (
 			Name:        ClientCredentialsGroup,
 			DisplayName: "OAuth 2.0 Client Credentials",
 			HelpText:    "Authenticate using OAuth 2.0 client credentials.",
-			Fields:      []field.SchemaField{ClientID, ClientSecret},
+			Fields:      []field.SchemaField{RampClientID, RampClientSecret},
 		},
 	}
 )

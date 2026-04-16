@@ -125,6 +125,15 @@ Create two Kubernetes manifest files for your Ramp connector deployment:
 
 #### Secrets configuration
 
+The Ramp connector supports two authentication methods:
+
+- **Access Token**: Use a Ramp API access token
+- **OAuth 2.0 Client Credentials**: Use OAuth client credentials (client ID and client secret)
+
+Choose the appropriate secrets configuration for your authentication method:
+
+**Option A: Access Token**
+
 ```yaml
 # baton-ramp-secrets.yaml
 apiVersion: v1
@@ -139,6 +148,25 @@ stringData:
   
   # Ramp credentials
   BATON_TOKEN: <Ramp API token>
+```
+
+**Option B: OAuth 2.0 Client Credentials**
+
+```yaml
+# baton-ramp-secrets.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: baton-ramp-secrets
+type: Opaque
+stringData:
+  # C1 credentials
+  BATON_CLIENT_ID: <C1 client ID>
+  BATON_CLIENT_SECRET: <C1 client secret>
+  
+  # Ramp OAuth credentials
+  BATON_RAMP_CLIENT_ID: <Ramp OAuth client ID>
+  BATON_RAMP_CLIENT_SECRET: <Ramp OAuth client secret>
 ```
 
 See the connector's README or run `--help` to see all available configuration flags and environment variables.

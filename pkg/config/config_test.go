@@ -33,8 +33,8 @@ func TestValidateConfig(t *testing.T) {
 		{
 			name: "valid config with client credentials",
 			config: &Ramp{
-				ClientId:     "my-client-id",
-				ClientSecret: "my-client-secret",
+				RampClientID:     "my-client-id",
+				RampClientSecret: "my-client-secret",
 			},
 			authGroup: ClientCredentialsGroup,
 			wantErr:   false,
@@ -42,7 +42,7 @@ func TestValidateConfig(t *testing.T) {
 		{
 			name: "invalid config with only client id",
 			config: &Ramp{
-				ClientId: "my-client-id",
+				RampClientID: "my-client-id",
 			},
 			authGroup: ClientCredentialsGroup,
 			wantErr:   true,
@@ -50,7 +50,7 @@ func TestValidateConfig(t *testing.T) {
 		{
 			name: "invalid config with only client secret",
 			config: &Ramp{
-				ClientSecret: "my-client-secret",
+				RampClientSecret: "my-client-secret",
 			},
 			authGroup: ClientCredentialsGroup,
 			wantErr:   true,
