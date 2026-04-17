@@ -62,3 +62,31 @@ func (c *Client) CreateUser(ctx context.Context, req *CreateUserRequest) (*Defer
 	return task, ratelimitData, nil
 }
 
+// PATCH https://api.ramp.com/developer/v1/users/{user_id}/deactivate
+// https://docs.ramp.com/developer-api/v1/api/users#patch-developer-v1-users-user_id-deactivate
+func (c *Client) DeactivateUser(ctx context.Context, userID string) (*v2.RateLimitDescription, error) {
+	reqURL, err := c.newUnPaginatedURL(fmt.Sprintf("%s/%s/deactivate", usersEndpoint, userID), nil)
+	if err != nil {
+		return nil, err
+	}
+	ratelimitData, err := c.query(ctx, http.MethodPatch, reqURL, nil)
+	if err != nil {
+		return ratelimitData, fmt.Errorf("ramp-client: error deactivating user %s: %w", userID, err)
+	}
+	return ratelimitData, nil
+}
+
+// PATCH https://api.ramp.com/developer/v1/users/{user_id}/reactivate
+// https://docs.ramp.com/developer-api/v1/api/users#patch-developer-v1-users-user_id-reactivate
+func (c *Client) ReactivateUser(ctx context.Context, userID string) (*v2.RateLimitDescription, error) {
+	reqURL, err := c.newUnPaginatedURL(fmt.Sprintf("%s/%s/reactivate", usersEndpoint, userID), nil)
+	if err != nil {
+		return nil, err
+	}
+	ratelimitData, err := c.query(ctx, http.MethodPatch, reqURL, nil)
+	if err != nil {
+		return ratelimitData, fmt.Errorf("ramp-client: error reactivating user %s: %w", userID, err)
+	}
+	return ratelimitData, nil
+}
+
