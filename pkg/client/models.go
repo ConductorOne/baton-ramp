@@ -23,6 +23,10 @@ type UsersResponse struct {
 	Pagination string
 }
 
+type DeferredTaskResponse struct {
+	ID string `json:"id"`
+}
+
 type Role struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`

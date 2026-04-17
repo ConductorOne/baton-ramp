@@ -7,9 +7,27 @@ import (
 	"github.com/conductorone/baton-ramp/pkg/client"
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
+	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
 	resourceSdk "github.com/conductorone/baton-sdk/pkg/types/resource"
+	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
+	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
 )
+
+// validCreateRoles is the set of roles the Ramp API accepts when creating a user via the deferred endpoint.
+// This differs from the roles returned during sync (roles.go): AUDITOR and GUEST_USER are accepted at
+// creation but not returned as assignable roles in the listing, so both sets must be maintained separately.
+var validCreateRoles = map[string]bool{
+	"AUDITOR":             true,
+	"BUSINESS_ADMIN":      true,
+	"BUSINESS_BOOKKEEPER": true,
+	"BUSINESS_OWNER":      true,
+	"BUSINESS_USER":       true,
+	"GUEST_USER":          true,
+	"IT_ADMIN":            true,
+}
 
 type userBuilder struct {
 	client *client.Client
@@ -32,6 +50,7 @@ func userResource(u *client.User) (*v2.Resource, error) {
 		resourceSdk.WithUserTrait(
 			resourceSdk.WithEmail(u.Email, true),
 			resourceSdk.WithStatus(status),
+			resourceSdk.WithUserLogin(u.Email),
 		),
 	)
 }
@@ -67,6 +86,73 @@ func (o *userBuilder) Entitlements(_ context.Context, resource *v2.Resource, _ *
 // Grants always returns an empty slice for users since they don't have any entitlements.
 func (o *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
 	return nil, "", nil, nil
+}
+
+func (o *userBuilder) CreateAccountCapabilityDetails(ctx context.Context) (*v2.CredentialDetailsAccountProvisioning, annotations.Annotations, error) {
+	return &v2.CredentialDetailsAccountProvisioning{
+		SupportedCredentialOptions: []v2.CapabilityDetailCredentialOption{
+			v2.CapabilityDetailCredentialOption_CAPABILITY_DETAIL_CREDENTIAL_OPTION_NO_PASSWORD,
+		},
+		PreferredCredentialOption: v2.CapabilityDetailCredentialOption_CAPABILITY_DETAIL_CREDENTIAL_OPTION_NO_PASSWORD,
+	}, nil, nil
+}
+
+func (o *userBuilder) CreateAccount(
+	ctx context.Context,
+	accountInfo *v2.AccountInfo,
+	_ *v2.LocalCredentialOptions,
+) (connectorbuilder.CreateAccountResponse, []*v2.PlaintextData, annotations.Annotations, error) {
+	var annos annotations.Annotations
+
+	profileFields := accountInfo.Profile.GetFields()
+
+	emailVal := profileFields["email"]
+	if emailVal == nil || emailVal.GetStringValue() == "" {
+		return nil, nil, nil, grpcstatus.Error(codes.InvalidArgument, "ramp-connector: email is required for account creation")
+	}
+	email := emailVal.GetStringValue()
+
+	firstNameVal := profileFields["first_name"]
+	if firstNameVal == nil || firstNameVal.GetStringValue() == "" {
+		return nil, nil, nil, grpcstatus.Error(codes.InvalidArgument, "ramp-connector: first_name is required for account creation")
+	}
+	firstName := firstNameVal.GetStringValue()
+
+	lastNameVal := profileFields["last_name"]
+	if lastNameVal == nil || lastNameVal.GetStringValue() == "" {
+		return nil, nil, nil, grpcstatus.Error(codes.InvalidArgument, "ramp-connector: last_name is required for account creation")
+	}
+	lastName := lastNameVal.GetStringValue()
+
+	roleVal := profileFields["role"]
+	if roleVal == nil || roleVal.GetStringValue() == "" {
+		return nil, nil, nil, grpcstatus.Error(codes.InvalidArgument, "ramp-connector: role is required for account creation")
+	}
+	role := roleVal.GetStringValue()
+	if !validCreateRoles[role] {
+		return nil, nil, nil, grpcstatus.Errorf(codes.InvalidArgument,
+			"ramp-connector: invalid role %q, must be one of AUDITOR, BUSINESS_ADMIN, BUSINESS_BOOKKEEPER, BUSINESS_OWNER, BUSINESS_USER, GUEST_USER, IT_ADMIN",
+			role)
+	}
+
+	req := &client.CreateUserRequest{
+		Email:     email,
+		FirstName: firstName,
+		LastName:  lastName,
+		Role:      role,
+	}
+
+	task, ratelimitData, err := o.client.CreateUser(ctx, req)
+	annos.WithRateLimiting(ratelimitData)
+	if err != nil {
+		return nil, nil, annos, fmt.Errorf("ramp-connector: failed to create user: %w", err)
+	}
+
+	ctxzap.Extract(ctx).Debug("ramp-connector: user invite sent, sync required to retrieve account", zap.String("task_id", task.ID))
+	return &v2.CreateAccountResponse_ActionRequiredResult{
+		Message:               fmt.Sprintf("User invite sent (task %s). Please sync after the user accepts the invite to retrieve their account.", task.ID),
+		IsCreateAccountResult: true,
+	}, nil, annos, nil
 }
 
 func newUserBuilder(client *client.Client) *userBuilder {
