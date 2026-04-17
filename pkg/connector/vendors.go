@@ -77,6 +77,9 @@ func (o *vendorBuilder) Grants(ctx context.Context, resource *v2.Resource, _ *pa
 	}, "", annos, nil
 }
 
+// Ramp vendors have a single owner. Granting the owner entitlement to a new
+// principal overwrites any existing owner via PATCH. Revoke only clears the
+// owner when the current owner matches the principal being revoked.
 func (o *vendorBuilder) Grant(ctx context.Context, principal *v2.Resource, ent *v2.Entitlement) ([]*v2.Grant, annotations.Annotations, error) {
 	vendorID := ent.Resource.Id.Resource
 	userID := principal.Id.Resource

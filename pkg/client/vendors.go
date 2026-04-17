@@ -11,7 +11,7 @@ import (
 const vendorsPath = "vendors"
 
 // GET https://api.ramp.com/developer/v1/vendors
-// Required scope: accounting:read.
+// Required scope: vendors:read.
 // https://docs.ramp.com/developer-api/v1/api/vendors#get-developer-v1-vendors
 func (c *Client) ListVendors(ctx context.Context, pagination string) (*VendorsResponse, *v2.RateLimitDescription, error) {
 	vendors := &VendorsList{}
@@ -34,7 +34,7 @@ func (c *Client) ListVendors(ctx context.Context, pagination string) (*VendorsRe
 }
 
 // GET https://api.ramp.com/developer/v1/vendors/{vendor_id}
-// Required scope: accounting:read.
+// Required scope: vendors:read.
 // https://docs.ramp.com/developer-api/v1/api/vendors#get-developer-v1-vendors-id
 func (c *Client) GetVendor(ctx context.Context, vendorID string) (*Vendor, *v2.RateLimitDescription, error) {
 	reqURL, err := c.newUnPaginatedURL(fmt.Sprintf("%s/%s", vendorsPath, vendorID), nil)
@@ -50,7 +50,7 @@ func (c *Client) GetVendor(ctx context.Context, vendorID string) (*Vendor, *v2.R
 }
 
 // PATCH https://api.ramp.com/developer/v1/vendors/{vendor_id}
-// Required scope: accounting:write.
+// Required scope: vendors:write.
 // https://docs.ramp.com/developer-api/v1/api/vendors#patch-developer-v1-vendors-id
 // Sets or clears vendor_owner_id. Pass empty string ownerID to clear the owner.
 func (c *Client) UpdateVendorOwner(ctx context.Context, vendorID, ownerID string) (*v2.RateLimitDescription, error) {

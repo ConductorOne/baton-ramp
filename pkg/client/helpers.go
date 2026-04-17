@@ -44,17 +44,15 @@ func (c *Client) query(ctx context.Context, method string, requestURL string, re
 		uhttp.WithJSONResponse(res),
 		uhttp.WithRatelimitData(&ratelimitData),
 	)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		if resp != nil {
 			logBody(ctx, resp.Body)
 		}
 		return &ratelimitData, fmt.Errorf("failed to execute request %s: %w", reqUrl.String(), err)
 	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		logBody(ctx, resp.Body)
-		return &ratelimitData, fmt.Errorf("unexpected status code %d for request %s: %s", resp.StatusCode, reqUrl.String(), http.StatusText(resp.StatusCode))
-	}
-	defer resp.Body.Close()
 	return &ratelimitData, nil
 }
 
@@ -85,17 +83,15 @@ func (c *Client) queryWithBody(ctx context.Context, method, requestURL string, b
 		doOpts = append(doOpts, uhttp.WithJSONResponse(res))
 	}
 	resp, err := c.Do(req, doOpts...)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		if resp != nil {
 			logBody(ctx, resp.Body)
 		}
 		return &ratelimitData, fmt.Errorf("failed to execute request %s: %w", reqUrl.String(), err)
 	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		logBody(ctx, resp.Body)
-		return &ratelimitData, fmt.Errorf("unexpected status code %d for request %s: %s", resp.StatusCode, reqUrl.String(), http.StatusText(resp.StatusCode))
-	}
-	defer resp.Body.Close()
 	return &ratelimitData, nil
 }
 
