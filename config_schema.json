@@ -102,9 +102,50 @@
           "isRequired": true
         }
       }
+    },
+    {
+      "name": "ramp-client-id",
+      "displayName": "Ramp OAuth Client ID",
+      "isRequired": true,
+      "stringField": {
+        "rules": {
+          "isRequired": true
+        }
+      }
+    },
+    {
+      "name": "ramp-client-secret",
+      "displayName": "Ramp OAuth Client Secret",
+      "isRequired": true,
+      "isSecret": true,
+      "stringField": {
+        "rules": {
+          "isRequired": true
+        }
+      }
     }
   ],
   "displayName": "Ramp",
-  "helpUrl": "/docs/baton/ramp-v2",
-  "iconUrl": "/static/app-icons/ramp.svg"
+  "helpUrl": "/docs/baton/ramp",
+  "iconUrl": "/static/app-icons/ramp.svg",
+  "fieldGroups": [
+    {
+      "name": "access_token",
+      "displayName": "Access Token",
+      "helpText": "Authenticate using a Ramp API access token.",
+      "fields": [
+        "token"
+      ],
+      "default": true
+    },
+    {
+      "name": "client_credentials",
+      "displayName": "OAuth 2.0 Client Credentials",
+      "helpText": "Authenticate using OAuth 2.0 client credentials issued by Ramp.",
+      "fields": [
+        "ramp-client-id",
+        "ramp-client-secret"
+      ]
+    }
+  ]
 }
