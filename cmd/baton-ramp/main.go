@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"os"
 
-	cfg "github.com/conductorone/baton-ramp/pkg/config"
 	"github.com/conductorone/baton-ramp/pkg/client"
+	cfg "github.com/conductorone/baton-ramp/pkg/config"
 	"github.com/conductorone/baton-ramp/pkg/connector"
 	"github.com/conductorone/baton-sdk/pkg/cli"
 	"github.com/conductorone/baton-sdk/pkg/config"
@@ -17,6 +17,7 @@ import (
 	"github.com/conductorone/baton-sdk/pkg/field"
 	"github.com/conductorone/baton-sdk/pkg/types"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
+	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2/clientcredentials"
 )
@@ -31,7 +32,7 @@ var rampOAuthScopes = []string{"users:read", "users:write"}
 func main() {
 	ctx := context.Background()
 
-	_, cmd, err := config.DefineConfigurationV2(
+	v, cmd, err := config.DefineConfigurationV2(
 		ctx,
 		"baton-ramp",
 		getConnector,
@@ -41,6 +42,28 @@ func main() {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
+	}
+
+	// When no auth method is explicitly set, pick the group whose credentials
+	// are populated so OAuth-only deployments don't trip the SDK's default-group
+	// validation (which requires BATON_TOKEN). Read the flag directly rather
+	// than through viper because cobra binds flags into viper later than
+	// PersistentPreRunE fires.
+	priorPreRun := cmd.PersistentPreRunE
+	cmd.PersistentPreRunE = func(c *cobra.Command, args []string) error {
+		if priorPreRun != nil {
+			if err := priorPreRun(c, args); err != nil {
+				return err
+			}
+		}
+		authMethodFlag, _ := c.Flags().GetString("auth-method")
+		if authMethodFlag != "" || os.Getenv("BATON_AUTH_METHOD") != "" {
+			return nil
+		}
+		if os.Getenv("BATON_RAMP_CLIENT_ID") != "" || os.Getenv("BATON_RAMP_CLIENT_SECRET") != "" {
+			v.Set("auth-method", cfg.ClientCredentialsGroup)
+		}
+		return nil
 	}
 
 	cmd.Version = version
@@ -55,13 +78,13 @@ func main() {
 func getConnector(ctx context.Context, cc *cfg.Ramp, runTimeOpts cli.RunTimeOpts) (types.ConnectorServer, error) {
 	l := ctxzap.Extract(ctx)
 
-	if err := field.Validate(cfg.Config, cc, field.WithAuthMethod(runTimeOpts.SelectedAuthMethod)); err != nil {
-		return nil, err
-	}
-
 	authMethod := runTimeOpts.SelectedAuthMethod
 	if authMethod == "" {
 		authMethod = cfg.AccessTokenGroup
+	}
+
+	if err := field.Validate(cfg.Config, cc, field.WithAuthMethod(authMethod)); err != nil {
+		return nil, err
 	}
 
 	var authOpt connector.Option
