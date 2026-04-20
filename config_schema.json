@@ -123,6 +123,12 @@
           "isRequired": true
         }
       }
+    },
+    {
+      "name": "ramp-base-url",
+      "displayName": "Ramp API Base URL",
+      "description": "Override the Ramp API base URL. Defaults to https://api.ramp.com. Use https://demo-api.ramp.com for sandbox.",
+      "stringField": {}
     }
   ],
   "displayName": "Ramp",

@@ -8,6 +8,7 @@ import (
 	"os"
 
 	cfg "github.com/conductorone/baton-ramp/pkg/config"
+	"github.com/conductorone/baton-ramp/pkg/client"
 	"github.com/conductorone/baton-ramp/pkg/connector"
 	"github.com/conductorone/baton-sdk/pkg/cli"
 	"github.com/conductorone/baton-sdk/pkg/config"
@@ -21,9 +22,6 @@ import (
 )
 
 var version = "dev"
-
-// rampOAuthTokenURL is Ramp's OAuth 2.0 client credentials token endpoint.
-const rampOAuthTokenURL = "https://api.ramp.com/developer/v1/token" //nolint:gosec // Not a credential
 
 // rampOAuthScopes are the OAuth scopes requested when authenticating via client credentials.
 // users:read  — list users (ListUsers)
@@ -66,23 +64,23 @@ func getConnector(ctx context.Context, cc *cfg.Ramp, runTimeOpts cli.RunTimeOpts
 		authMethod = cfg.AccessTokenGroup
 	}
 
-	var connectorOpt connector.Option
+	var authOpt connector.Option
 	switch authMethod {
 	case cfg.ClientCredentialsGroup:
 		ccCfg := &clientcredentials.Config{
 			ClientID:     cc.RampClientId,
 			ClientSecret: cc.RampClientSecret,
-			TokenURL:     rampOAuthTokenURL,
+			TokenURL:     client.TokenURL(cc.RampBaseUrl),
 			Scopes:       rampOAuthScopes,
 		}
-		connectorOpt = connector.WithTokenSource(ctx, ccCfg.TokenSource(ctx))
+		authOpt = connector.WithTokenSource(ctx, ccCfg.TokenSource(ctx))
 	case cfg.AccessTokenGroup:
-		connectorOpt = connector.WithToken(ctx, cc.Token)
+		authOpt = connector.WithToken(ctx, cc.Token)
 	default:
 		return nil, fmt.Errorf("baton-ramp-connector: unknown auth method %q", authMethod)
 	}
 
-	cb, err := connector.New(ctx, connectorOpt)
+	cb, err := connector.New(ctx, connector.WithBaseURL(cc.RampBaseUrl), authOpt)
 	if err != nil {
 		l.Error("error creating connector", zap.Error(err))
 		return nil, err

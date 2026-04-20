@@ -7,6 +7,7 @@ type Ramp struct {
 	Token string `mapstructure:"token"`
 	RampClientId string `mapstructure:"ramp-client-id"`
 	RampClientSecret string `mapstructure:"ramp-client-secret"`
+	RampBaseUrl string `mapstructure:"ramp-base-url"`
 }
 
 func (c *Ramp) findFieldByTag(tagValue string) (any, bool) {

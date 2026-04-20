@@ -141,6 +141,8 @@ The Ramp connector supports two authentication methods — pick one when populat
 
 See the [Ramp authorization docs](https://docs.ramp.com/developer-api/v1/authorization) for how to create an OAuth app with the `Client Credentials` grant type and `users:read` / `users:write` scopes.
 
+The connector points at `https://api.ramp.com` by default. Set `BATON_RAMP_BASE_URL` to `https://demo-api.ramp.com` (or another Ramp environment) to override.
+
 #### Secrets configuration
 
 **Option A — Access Token:**

@@ -27,7 +27,12 @@ var (
 		field.WithDisplayName("Ramp OAuth Client Secret"),
 	)
 
-	ConfigurationFields = []field.SchemaField{Token, RampClientID, RampClientSecret}
+	RampBaseURL = field.StringField("ramp-base-url",
+		field.WithDisplayName("Ramp API Base URL"),
+		field.WithDescription("Override the Ramp API base URL. Defaults to https://api.ramp.com. Use https://demo-api.ramp.com for sandbox."),
+	)
+
+	ConfigurationFields = []field.SchemaField{Token, RampClientID, RampClientSecret, RampBaseURL}
 
 	// Field groups gate which fields are validated per selected auth method.
 	// No top-level relationship constraints: FieldsMutuallyExclusive rejects
