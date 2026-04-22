@@ -78,21 +78,22 @@ func (c *Client) queryWithBody(ctx context.Context, method, requestURL string, b
 		doOpts = append(doOpts, uhttp.WithJSONResponse(res))
 	}
 	resp, err := c.Do(req, doOpts...)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		if resp != nil {
 			logBody(ctx, resp.Body)
 		}
 		return &ratelimitData, fmt.Errorf("failed to execute request %s: %w", reqUrl.String(), err)
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		logBody(ctx, io.NopCloser(resp.Body))
-		return &ratelimitData, fmt.Errorf("unexpected status code %d for request %s: %s", resp.StatusCode, reqUrl.String(), http.StatusText(resp.StatusCode))
-	}
 	return &ratelimitData, nil
 }
 
 func logBody(ctx context.Context, bodyCloser io.ReadCloser) {
+	if bodyCloser == nil {
+		return
+	}
 	defer bodyCloser.Close()
 	l := ctxzap.Extract(ctx)
 	body := make([]byte, 1024*1024)

@@ -33,6 +33,7 @@ func (d *Connector) ResourceSyncers(ctx context.Context) []connectorbuilder.Reso
 	return []connectorbuilder.ResourceSyncer{
 		newUserBuilder(d.client),
 		newRoleBuilder(d.client),
+		newVendorBuilder(d.client),
 	}
 }
 
@@ -46,7 +47,7 @@ func (d *Connector) Asset(ctx context.Context, asset *v2.AssetRef) (string, io.R
 func (d *Connector) Metadata(ctx context.Context) (*v2.ConnectorMetadata, error) {
 	return &v2.ConnectorMetadata{
 		DisplayName: "Baton Ramp Connector",
-		Description: "This connector integrates with Ramp to manage users and roles.",
+		Description: "This connector integrates with Ramp to manage users, roles, and vendors.",
 		AccountCreationSchema: &v2.ConnectorAccountCreationSchema{
 			FieldMap: map[string]*v2.ConnectorAccountCreationSchema_Field{
 				"email": {
