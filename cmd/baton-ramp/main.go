@@ -24,9 +24,10 @@ import (
 var version = "dev"
 
 // rampOAuthScopes are the OAuth scopes requested when authenticating via client credentials.
-// users:read  — list users (ListUsers)
-// users:write — create/deactivate/reactivate users (CreateUser, DeactivateUser, ReactivateUser)
-var rampOAuthScopes = []string{"users:read", "users:write"}
+// users:read    — list users (ListUsers)
+// users:write   — create/deactivate/reactivate users (CreateUser, DeactivateUser, ReactivateUser)
+// vendors:read  — list vendors (ListVendors, GetVendor)
+var rampOAuthScopes = []string{"users:read", "users:write", "vendors:read"}
 
 func main() {
 	ctx := context.Background()
