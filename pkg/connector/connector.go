@@ -13,10 +13,20 @@ import (
 )
 
 type Connector struct {
-	client *client.Client
+	client  *client.Client
+	baseURL string
 }
 
 type Option func(*Connector) error
+
+// WithBaseURL overrides the default Ramp API base URL (e.g. https://demo-api.ramp.com for sandbox).
+// Must be applied before WithToken or WithTokenSource so they build the client against it.
+func WithBaseURL(baseURL string) Option {
+	return func(c *Connector) error {
+		c.baseURL = baseURL
+		return nil
+	}
+}
 
 // ResourceSyncers returns a ResourceSyncer for each resource type that should be synced from the upstream service.
 func (d *Connector) ResourceSyncers(ctx context.Context) []connectorbuilder.ResourceSyncer {
@@ -87,7 +97,7 @@ func (d *Connector) Validate(ctx context.Context) (annotations.Annotations, erro
 // WithToken configures the connector to use an access token.
 func WithToken(ctx context.Context, token string) Option {
 	return func(c *Connector) error {
-		client, err := client.New(ctx, client.Token{AccessToken: token})
+		client, err := client.New(ctx, client.Token{AccessToken: token}, c.baseURL)
 		if err != nil {
 			return fmt.Errorf("error creating ramp client: %w", err)
 		}
@@ -99,7 +109,7 @@ func WithToken(ctx context.Context, token string) Option {
 // WithTokenSource configures the connector to use a pre-configured token source.
 func WithTokenSource(ctx context.Context, tokenSource oauth2.TokenSource) Option {
 	return func(c *Connector) error {
-		client, err := client.New(ctx, tokenSource)
+		client, err := client.New(ctx, tokenSource, c.baseURL)
 		if err != nil {
 			return fmt.Errorf("error creating ramp client: %w", err)
 		}

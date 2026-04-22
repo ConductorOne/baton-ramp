@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/uhttp"
@@ -16,13 +17,30 @@ import (
 )
 
 const (
-	APIDomain  = "api.ramp.com"
-	APIPath    = "developer"
-	APIVersion = "v1"
+	DefaultBaseURL = "https://api.ramp.com"
+	APIPath        = "developer"
+	APIVersion     = "v1"
 )
 
+// ResolveBaseURL returns the supplied base URL, falling back to DefaultBaseURL when empty.
+func ResolveBaseURL(baseURL string) string {
+	if baseURL == "" {
+		return DefaultBaseURL
+	}
+	return strings.TrimRight(baseURL, "/")
+}
+
+// TokenURL returns the Ramp OAuth 2.0 client-credentials token endpoint for the given base URL.
+func TokenURL(baseURL string) string {
+	return fmt.Sprintf("%s/%s/%s/token", ResolveBaseURL(baseURL), APIPath, APIVersion)
+}
+
+func (c *Client) apiBaseURL() string {
+	return ResolveBaseURL(c.baseURL)
+}
+
 func (c *Client) newUnPaginatedURL(path string, v url.Values) (string, error) {
-	reqUrl, err := url.Parse(fmt.Sprintf("https://%s/%s/%s/%s", APIDomain, APIPath, APIVersion, path))
+	reqUrl, err := url.Parse(fmt.Sprintf("%s/%s/%s/%s", c.apiBaseURL(), APIPath, APIVersion, path))
 	if err != nil {
 		return "", err
 	}

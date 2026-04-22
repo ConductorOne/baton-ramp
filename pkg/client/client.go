@@ -16,6 +16,7 @@ import (
 type Client struct {
 	*uhttp.BaseHttpClient
 	TokenSource oauth2.TokenSource
+	baseURL     string
 }
 
 type openGraphHttpTransport struct {
@@ -37,7 +38,7 @@ func (c Token) Token() (*oauth2.Token, error) {
 	}, nil
 }
 
-func New(ctx context.Context, tokenSource oauth2.TokenSource) (*Client, error) {
+func New(ctx context.Context, tokenSource oauth2.TokenSource, baseURL string) (*Client, error) {
 	httpClient, err := uhttp.NewClient(ctx, uhttp.WithLogger(true, ctxzap.Extract(ctx)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP client: %w", err)
@@ -49,6 +50,7 @@ func New(ctx context.Context, tokenSource oauth2.TokenSource) (*Client, error) {
 	return &Client{
 		BaseHttpClient: uhttp.NewBaseHttpClient(httpClient),
 		TokenSource:    tokenSource,
+		baseURL:        baseURL,
 	}, nil
 }
 
