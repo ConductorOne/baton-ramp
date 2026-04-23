@@ -128,7 +128,9 @@
       "name": "ramp-base-url",
       "displayName": "Ramp API Base URL",
       "description": "Override the Ramp API base URL. Defaults to https://api.ramp.com. Use https://demo-api.ramp.com for sandbox.",
-      "stringField": {}
+      "stringField": {
+        "defaultValue": "https://api.ramp.com"
+      }
     }
   ],
   "displayName": "Ramp",
@@ -140,7 +142,8 @@
       "displayName": "Access Token",
       "helpText": "Authenticate using a Ramp API access token.",
       "fields": [
-        "token"
+        "token",
+        "ramp-base-url"
       ],
       "default": true
     },
@@ -150,7 +153,8 @@
       "helpText": "Authenticate using OAuth 2.0 client credentials issued by Ramp.",
       "fields": [
         "ramp-client-id",
-        "ramp-client-secret"
+        "ramp-client-secret",
+        "ramp-base-url"
       ]
     }
   ]
