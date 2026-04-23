@@ -30,6 +30,7 @@ var (
 	RampBaseURL = field.StringField("ramp-base-url",
 		field.WithDisplayName("Ramp API Base URL"),
 		field.WithDescription("Override the Ramp API base URL. Defaults to https://api.ramp.com. Use https://demo-api.ramp.com for sandbox."),
+		field.WithDefaultValue("https://api.ramp.com"),
 	)
 
 	ConfigurationFields = []field.SchemaField{Token, RampClientID, RampClientSecret, RampBaseURL}
@@ -45,14 +46,14 @@ var (
 			Name:        AccessTokenGroup,
 			DisplayName: "Access Token",
 			HelpText:    "Authenticate using a Ramp API access token.",
-			Fields:      []field.SchemaField{Token},
+			Fields:      []field.SchemaField{Token, RampBaseURL},
 			Default:     true,
 		},
 		{
 			Name:        ClientCredentialsGroup,
 			DisplayName: "OAuth 2.0 Client Credentials",
 			HelpText:    "Authenticate using OAuth 2.0 client credentials issued by Ramp.",
-			Fields:      []field.SchemaField{RampClientID, RampClientSecret},
+			Fields:      []field.SchemaField{RampClientID, RampClientSecret, RampBaseURL},
 		},
 	}
 )

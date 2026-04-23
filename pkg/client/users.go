@@ -27,7 +27,7 @@ func (c *Client) ListUsers(ctx context.Context, pagination string) (*UsersRespon
 	reqURL := pagination
 	if reqURL == "" {
 		var err error
-		reqURL, err = c.newUnPaginatedURL(usersEndpoint, nil)
+		reqURL, err = c.newUnPaginatedURL(usersEndpoint)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -50,7 +50,7 @@ func (c *Client) CreateUser(ctx context.Context, req *CreateUserRequest) (*Defer
 	if req.IdempotencyKey == "" {
 		req.IdempotencyKey = uuid.New().String()
 	}
-	reqURL, err := c.newUnPaginatedURL(usersDeferredEndpoint, nil)
+	reqURL, err := c.newUnPaginatedURL(usersDeferredEndpoint)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -65,7 +65,7 @@ func (c *Client) CreateUser(ctx context.Context, req *CreateUserRequest) (*Defer
 // PATCH https://api.ramp.com/developer/v1/users/{user_id}/deactivate
 // https://docs.ramp.com/developer-api/v1/api/users#patch-developer-v1-users-user_id-deactivate
 func (c *Client) DeactivateUser(ctx context.Context, userID string) (*v2.RateLimitDescription, error) {
-	reqURL, err := c.newUnPaginatedURL(fmt.Sprintf("%s/%s/deactivate", usersEndpoint, userID), nil)
+	reqURL, err := c.newUnPaginatedURL(fmt.Sprintf("%s/%s/deactivate", usersEndpoint, userID))
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (c *Client) DeactivateUser(ctx context.Context, userID string) (*v2.RateLim
 // PATCH https://api.ramp.com/developer/v1/users/{user_id}/reactivate
 // https://docs.ramp.com/developer-api/v1/api/users#patch-developer-v1-users-user_id-reactivate
 func (c *Client) ReactivateUser(ctx context.Context, userID string) (*v2.RateLimitDescription, error) {
-	reqURL, err := c.newUnPaginatedURL(fmt.Sprintf("%s/%s/reactivate", usersEndpoint, userID), nil)
+	reqURL, err := c.newUnPaginatedURL(fmt.Sprintf("%s/%s/reactivate", usersEndpoint, userID))
 	if err != nil {
 		return nil, err
 	}
