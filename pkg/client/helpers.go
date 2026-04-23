@@ -21,7 +21,7 @@ const (
 	APIVersion = "v1"
 )
 
-// ResolveBaseURL returns the supplied base URL, falling back to DefaultBaseURL when empty.
+// ResolveBaseURL trims trailing slashes from the supplied base URL.
 func ResolveBaseURL(baseURL string) string {
 	return strings.TrimRight(baseURL, "/")
 }
