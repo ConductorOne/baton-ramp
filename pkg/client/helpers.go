@@ -17,16 +17,12 @@ import (
 )
 
 const (
-	DefaultBaseURL = "https://api.ramp.com"
-	APIPath        = "developer"
-	APIVersion     = "v1"
+	APIPath    = "developer"
+	APIVersion = "v1"
 )
 
 // ResolveBaseURL returns the supplied base URL, falling back to DefaultBaseURL when empty.
 func ResolveBaseURL(baseURL string) string {
-	if baseURL == "" {
-		return DefaultBaseURL
-	}
 	return strings.TrimRight(baseURL, "/")
 }
 
@@ -39,7 +35,7 @@ func (c *Client) apiBaseURL() string {
 	return ResolveBaseURL(c.baseURL)
 }
 
-func (c *Client) newUnPaginatedURL(path string, v url.Values) (string, error) {
+func (c *Client) newUnPaginatedURL(path string) (string, error) {
 	reqUrl, err := url.Parse(fmt.Sprintf("%s/%s/%s/%s", c.apiBaseURL(), APIPath, APIVersion, path))
 	if err != nil {
 		return "", err
