@@ -39,8 +39,6 @@ Connector actions are custom capabilities that extend C1 automations with app-sp
 | enable_user | `user_id` (string, required) | Reactivate a Ramp user. The user can log in to Ramp again, spend on their previously issued cards, and resume receiving notifications. |
 
 <Note>
-The `user_id` field must be the Ramp user ID. In C1 Automations, use **Specific account** mode and provide the Account ID from the user's URL in C1 (`/admin/applications/{app_id}/accounts/{account_id}`). The **Subject account** trigger is not supported for these actions because the Ramp user ID is not available in the workflow context.
-</Note>
 
 ## Configure the Ramp connector
 
