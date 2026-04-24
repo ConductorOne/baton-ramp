@@ -38,6 +38,10 @@ Connector actions are custom capabilities that extend C1 automations with app-sp
 | disable_user | `user_id` (string, required) | Deactivate a Ramp user. The user will no longer be able to log in, spend on cards, or receive notifications. |
 | enable_user | `user_id` (string, required) | Reactivate a Ramp user. The user can log in to Ramp again, spend on their previously issued cards, and resume receiving notifications. |
 
+<Note>
+The `user_id` field must be the Ramp user ID. In C1 Automations, use **Specific account** mode and provide the Account ID from the user's URL in C1 (`/admin/applications/{app_id}/accounts/{account_id}`). The **Subject account** trigger is not supported for these actions because the Ramp user ID is not available in the workflow context.
+</Note>
+
 ## Configure the Ramp connector
 
 <Warning>
@@ -116,7 +120,7 @@ Search for **Baton** and click **Add**.
 <Step>
 Choose how to set up the new Ramp connector: 
 
-   * Add the connector to a currently unmanaged app (select from the list of apps that were discovered in your identity, SSO, or federation provider that aren't yet managed with C1)
+   * Add the connector to a currently unmanaged app (select from the list of apps that were discovered in your identity, SSO, or financial provider that aren't yet managed with C1)
 
    * Add the connector to a managed app (select from the list of existing managed apps)
 
@@ -149,7 +153,7 @@ The Ramp connector supports two authentication methods — pick one when populat
 - **Access Token** — a long-lived Ramp API access token.
 - **OAuth 2.0 Client Credentials** — a Ramp OAuth client ID and secret (the connector exchanges them for a short-lived access token automatically, via `https://api.ramp.com/developer/v1/token`).
 
-See the [Ramp authorization docs](https://docs.ramp.com/developer-api/v1/authorization) for how to create an OAuth app with the `Client Credentials` grant type and `users:read` / `users:write` scopes.
+See the [Ramp authorization docs](https://docs.ramp.com/developer-api/v1/authorization) for how to create an OAuth app with the `Client Credentials` grant type and `users:read`, `users:write`, and `vendors:read` scopes. To manage vendor owners (grant or revoke the vendor owner entitlement), also include `vendors:write`.
 
 The connector points at `https://api.ramp.com` by default. Set `BATON_RAMP_BASE_URL` (or the **Ramp API Base URL** field) to `https://demo-api.ramp.com` (or another Ramp environment) to override.
 
@@ -241,4 +245,3 @@ Check that the connector data uploaded correctly. In C1, click **Apps**. On the 
 **That's it!** Your Ramp connector is now pulling access data into C1.
 </Tab>
 </Tabs>
-
