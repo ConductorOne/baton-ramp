@@ -27,7 +27,8 @@ var version = "dev"
 // users:read    — list users (ListUsers)
 // users:write   — create/deactivate/reactivate users (CreateUser, DeactivateUser, ReactivateUser)
 // vendors:read  — list vendors (ListVendors, GetVendor)
-var rampOAuthScopes = []string{"users:read", "users:write", "vendors:read"}
+// vendors:write — update vendor owner (UpdateVendorOwner) for vendor owner grant/revoke
+var rampOAuthScopes = []string{"users:read", "users:write", "vendors:read", "vendors:write"}
 
 func main() {
 	ctx := context.Background()
