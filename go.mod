@@ -3,7 +3,7 @@ module github.com/conductorone/baton-ramp
 go 1.25.2
 
 require (
-	github.com/conductorone/baton-sdk v0.8.29
+	github.com/conductorone/baton-sdk v0.8.31-0.20260430233406-59f0d649518a
 	github.com/ennyjfrick/ruleguard-logfatal v0.0.2
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
@@ -47,7 +47,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/conductorone/dpop v0.2.3 // indirect
 	github.com/conductorone/dpop/integrations/dpop_grpc v0.2.3 // indirect
-	github.com/conductorone/dpop/integrations/dpop_oauth2 v0.2.3 // indirect
+	github.com/conductorone/dpop/integrations/dpop_oauth2 v0.2.5 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/deckarep/golang-set/v2 v2.7.0 // indirect
 	github.com/doug-martin/goqu/v9 v9.19.0 // indirect

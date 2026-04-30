@@ -23,12 +23,29 @@ import (
 
 var version = "dev"
 
-// rampOAuthScopes are the OAuth scopes requested when authenticating via client credentials.
+// baseRampOAuthScopes are the OAuth scopes requested by every install.
 // users:read    — list users (ListUsers)
 // users:write   — create/deactivate/reactivate users (CreateUser, DeactivateUser, ReactivateUser)
 // vendors:read  — list vendors (ListVendors, GetVendor)
 // vendors:write — update vendor owner (UpdateVendorOwner) for vendor owner grant/revoke
-var rampOAuthScopes = []string{"users:read", "users:write", "vendors:read", "vendors:write"}
+// business:read — fetch business id for source_business_id and access audit-log events
+var baseRampOAuthScopes = []string{"users:read", "users:write", "vendors:read", "vendors:write", "business:read"}
+
+// vendorManagementScope is appended only when the vendor-management flag
+// is true. Listing and reading vendor agreements requires it.
+const vendorManagementScope = "vendor_agreements:read"
+
+// buildOAuthScopes returns the OAuth scopes for the connector based on the
+// resolved config. Adding new scopes here must remain backward-compatible
+// with existing installs (i.e. only append; never remove from baseRampOAuthScopes).
+func buildOAuthScopes(cc *cfg.Ramp) []string {
+	scopes := make([]string, 0, len(baseRampOAuthScopes)+1)
+	scopes = append(scopes, baseRampOAuthScopes...)
+	if cc.VendorManagement {
+		scopes = append(scopes, vendorManagementScope)
+	}
+	return scopes
+}
 
 func main() {
 	ctx := context.Background()
@@ -75,7 +92,7 @@ func getConnector(ctx context.Context, cc *cfg.Ramp, runTimeOpts cli.RunTimeOpts
 			ClientID:     cc.RampClientId,
 			ClientSecret: cc.RampClientSecret,
 			TokenURL:     client.TokenURL(cc.RampBaseUrl),
-			Scopes:       rampOAuthScopes,
+			Scopes:       buildOAuthScopes(cc),
 		}
 		authOpt = connector.WithTokenSource(ctx, ccCfg.TokenSource(ctx))
 	case cfg.AccessTokenGroup:
@@ -84,7 +101,12 @@ func getConnector(ctx context.Context, cc *cfg.Ramp, runTimeOpts cli.RunTimeOpts
 		return nil, fmt.Errorf("baton-ramp-connector: unknown auth method %q", authMethod)
 	}
 
-	cb, err := connector.New(ctx, connector.WithBaseURL(cc.RampBaseUrl), authOpt)
+	cb, err := connector.New(
+		ctx,
+		connector.WithBaseURL(cc.RampBaseUrl),
+		connector.WithVendorManagement(cc.VendorManagement),
+		authOpt,
+	)
 	if err != nil {
 		l.Error("error creating connector", zap.Error(err))
 		return nil, err
