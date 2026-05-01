@@ -3,6 +3,7 @@ package connector
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/conductorone/baton-ramp/pkg/client"
@@ -18,9 +19,33 @@ import (
 // agreement's contract_owners array. Read-only in v1 (no Grant/Revoke).
 const contractOwnerEntitlement = "contract_owner"
 
+// vendorSpend captures the trailing-window spend Ramp pre-aggregates on
+// each vendor. Mirrored on every agreement under that vendor so consumers
+// reading VendorAgreementTrait.trailing_*_spend get the source's
+// authoritative numbers without needing to join back to the parent vendor.
+//
+// Ramp aggregates spend at the vendor (not agreement) level. When a single
+// vendor has multiple agreements, every agreement carries the same spend
+// triple. Consumers that aggregate spend should dedupe by vendor_id (which
+// is in VendorTrait on the same resource) before summing.
+type vendorSpend struct {
+	Trailing30Day  *client.Money
+	Trailing365Day *client.Money
+	YTD            *client.Money
+}
+
 type vendorAgreementBuilder struct {
 	client     *client.Client
 	businessID func() string
+
+	// vendorSpendCache memoizes per-vendor spend, populated on the first
+	// call to List by paginating /developer/v1/vendors. Subsequent List
+	// calls reuse the cache for the duration of the sync. Concurrency-
+	// safe via sync.Mutex; loaded under sync.Once with err propagation.
+	vendorSpendCacheOnce sync.Once
+	vendorSpendCacheMu   sync.RWMutex
+	vendorSpendCache     map[string]vendorSpend
+	vendorSpendCacheErr  error
 }
 
 func (b *vendorAgreementBuilder) ResourceType(ctx context.Context) *v2.ResourceType {
@@ -30,15 +55,29 @@ func (b *vendorAgreementBuilder) ResourceType(ctx context.Context) *v2.ResourceT
 // List paginates through POST /developer/v1/vendors/agreements and emits
 // one resource per agreement. Each resource carries both VendorTrait and
 // VendorAgreementTrait — agreements name a vendor (so identity is
-// available) and carry agreement-specific data.
+// available) and carry agreement-specific data, including the parent
+// vendor's trailing-window spend.
 //
-// To populate VendorAgreementTrait fully (line items, etc.) we'd need a
-// per-agreement single-fetch on top of the list response. v1 emits the
-// fields available on the list response only; line_items / richer payee
-// data is left for a follow-up that probes a real Ramp tenant to nail
-// down the opaque shape.
+// On the first call per sync, ensureVendorSpendCache pre-fetches every
+// vendor (paginated) so each agreement can be enriched with its parent
+// vendor's spend without per-agreement vendor lookups. The cache is
+// reused across subsequent pages.
+//
+// To populate VendorAgreementTrait's line_items we'd need a per-agreement
+// single-fetch on top of the list response, and Ramp's spec types
+// line_items as opaque (`Record<string, unknown>[]`); promoting to typed
+// LineItems requires probing a real tenant. Tracked as a follow-up.
 func (b *vendorAgreementBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId, pToken *pagination.Token) ([]*v2.Resource, string, annotations.Annotations, error) {
 	var annos annotations.Annotations
+
+	rateLimitFromCacheLoad, err := b.ensureVendorSpendCache(ctx)
+	for _, rl := range rateLimitFromCacheLoad {
+		annos.WithRateLimiting(rl)
+	}
+	if err != nil {
+		return nil, "", annos, err
+	}
+
 	resp, ratelimitData, err := b.client.ListVendorAgreements(ctx, &client.VendorAgreementsListRequest{}, pToken.Token)
 	annos.WithRateLimiting(ratelimitData)
 	if err != nil {
@@ -54,6 +93,59 @@ func (b *vendorAgreementBuilder) List(ctx context.Context, parentResourceID *v2.
 		rv = append(rv, resource)
 	}
 	return rv, resp.Pagination, annos, nil
+}
+
+// ensureVendorSpendCache is a sync.Once-guarded loader that paginates the
+// vendor list and builds the spend map. Returns the rate-limit annotations
+// observed during load (potentially many, one per page) so the caller can
+// surface them. Returns an error only on the first loading goroutine; later
+// callers see cached state.
+func (b *vendorAgreementBuilder) ensureVendorSpendCache(ctx context.Context) ([]*v2.RateLimitDescription, error) {
+	var rls []*v2.RateLimitDescription
+	b.vendorSpendCacheOnce.Do(func() {
+		cache := make(map[string]vendorSpend)
+		pagination := ""
+		for {
+			resp, rl, err := b.client.ListVendors(ctx, pagination)
+			if rl != nil {
+				rls = append(rls, rl)
+			}
+			if err != nil {
+				b.vendorSpendCacheErr = fmt.Errorf("baton-ramp: failed to load vendor spend cache: %w", err)
+				return
+			}
+			for _, v := range resp.Vendors {
+				if v == nil || v.ID == "" {
+					continue
+				}
+				cache[v.ID] = vendorSpend{
+					Trailing30Day:  v.TotalSpendLast30Days,
+					Trailing365Day: v.TotalSpendLast365Days,
+					YTD:            v.TotalSpendYTD,
+				}
+			}
+			if resp.Pagination == "" {
+				break
+			}
+			pagination = resp.Pagination
+		}
+		b.vendorSpendCacheMu.Lock()
+		b.vendorSpendCache = cache
+		b.vendorSpendCacheMu.Unlock()
+	})
+	return rls, b.vendorSpendCacheErr
+}
+
+// vendorSpendFor returns the cached spend for a vendor id, or the zero
+// vendorSpend when not present (which propagates as nil Money in the
+// trait — none of the WithTrailing*Spend options will fire).
+func (b *vendorAgreementBuilder) vendorSpendFor(vendorID string) vendorSpend {
+	b.vendorSpendCacheMu.RLock()
+	defer b.vendorSpendCacheMu.RUnlock()
+	if b.vendorSpendCache == nil {
+		return vendorSpend{}
+	}
+	return b.vendorSpendCache[vendorID]
 }
 
 // Entitlements declares the contract_owner entitlement, granted to Ramp
@@ -106,13 +198,15 @@ func (b *vendorAgreementBuilder) Grants(ctx context.Context, resource *v2.Resour
 
 // buildAgreementResource constructs a vendor_agreement resource from the
 // list-response shape. Both VendorTrait (identity) and VendorAgreementTrait
-// (agreement payload) are attached.
+// (agreement payload, including the parent vendor's trailing-window spend
+// from the cache) are attached.
 func (b *vendorAgreementBuilder) buildAgreementResource(agreement *client.VendorAgreementListItem) (*v2.Resource, error) {
 	vendorTraitOption, err := buildAgreementVendorTraitOption(agreement, b.businessID)
 	if err != nil {
 		return nil, fmt.Errorf("vendor trait: %w", err)
 	}
-	agreementTraitOption, err := buildAgreementTraitOption(agreement)
+	spend := b.vendorSpendFor(agreement.PayeeID)
+	agreementTraitOption, err := buildAgreementTraitOption(agreement, spend)
 	if err != nil {
 		return nil, fmt.Errorf("agreement trait: %w", err)
 	}
@@ -156,8 +250,14 @@ func buildAgreementVendorTraitOption(agreement *client.VendorAgreementListItem, 
 }
 
 // buildAgreementTraitOption fills VendorAgreementTrait from a Ramp
-// agreement list item.
-func buildAgreementTraitOption(agreement *client.VendorAgreementListItem) (resourceSdk.ResourceOption, error) {
+// agreement list item plus its parent vendor's trailing-window spend.
+//
+// The spend triple comes from the parent vendor (Ramp aggregates spend
+// at the vendor, not the agreement, level). Every agreement under the
+// same vendor will carry the same spend numbers; consumers that
+// aggregate spend across agreements should dedupe by VendorTrait.vendor_id
+// before summing.
+func buildAgreementTraitOption(agreement *client.VendorAgreementListItem, spend vendorSpend) (resourceSdk.ResourceOption, error) {
 	startDate, err := parseRampDate(agreement.StartDate)
 	if err != nil {
 		return nil, fmt.Errorf("start_date: %w", err)
@@ -183,13 +283,20 @@ func buildAgreementTraitOption(agreement *client.VendorAgreementListItem) (resou
 	if agreement.TotalValue != nil && agreement.TotalValue.CurrencyCode != "" {
 		traitOpts = append(traitOpts, resourceSdk.WithTotalValue(rampMoneyToTraitMoney(agreement.TotalValue)))
 	}
+	if m := rampMoneyToTraitMoney(spend.Trailing30Day); m != nil {
+		traitOpts = append(traitOpts, resourceSdk.WithTrailing30DaySpend(m))
+	}
+	if m := rampMoneyToTraitMoney(spend.Trailing365Day); m != nil {
+		traitOpts = append(traitOpts, resourceSdk.WithTrailing365DaySpend(m))
+	}
+	if m := rampMoneyToTraitMoney(spend.YTD); m != nil {
+		traitOpts = append(traitOpts, resourceSdk.WithYTDSpend(m))
+	}
 	// line_items: not emitted in v1. The list response doesn't include
 	// them; the GET single-fetch returns them as opaque
-	// `Record<string, unknown>[]` per Ramp spec. Promoting them to a typed
-	// LineItem requires probing a real tenant.
+	// `Record<string, unknown>[]` per Ramp spec. Promoting them to a
+	// typed LineItem requires probing a real tenant.
 	// pricing_model: not derivable from the API.
-	// Trailing-window spend: lives on the parent vendor, not on the
-	// agreement. We emit it on the vendor resource (vendors.go) only.
 	// external_account_manager_*: Ramp doesn't expose these on the
 	// agreement; reserved for sources like Vanta that do.
 	return resourceSdk.WithVendorAgreementTrait(traitOpts...), nil
@@ -218,9 +325,11 @@ func mapRampRenewalStatus(raw string) v2.VendorAgreementTrait_RenewalStatus {
 }
 
 // rampMoneyToTraitMoney converts a Ramp Money to the trait's Money,
-// translating major-unit decimal to int64 minor units.
+// translating major-unit decimal to int64 minor units. Returns nil when
+// the source has no currency code (i.e. the field is structurally absent
+// from the response, which can happen when no spend data is recorded).
 func rampMoneyToTraitMoney(m *client.Money) *v2.Money {
-	if m == nil {
+	if m == nil || m.CurrencyCode == "" {
 		return nil
 	}
 	return resourceSdk.NewMoney(m.MinorUnits(), m.CurrencyCode)
