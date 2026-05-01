@@ -44,3 +44,18 @@ var vendorResourceType = &v2.ResourceType{
 		capabilityPermissions("vendors:read", "vendors:write"),
 	),
 }
+
+// vendor_agreement carries both TRAIT_VENDOR (cross-system identity, since
+// every agreement names the vendor it covers) and TRAIT_VENDOR_AGREEMENT
+// (the agreement payload). Resource ID is the Ramp agreement UUID.
+var vendorAgreementResourceType = &v2.ResourceType{
+	Id:          "vendor_agreement",
+	DisplayName: "Vendor Agreement",
+	Traits: []v2.ResourceType_Trait{
+		v2.ResourceType_TRAIT_VENDOR,
+		v2.ResourceType_TRAIT_VENDOR_AGREEMENT,
+	},
+	Annotations: annotations.New(
+		capabilityPermissions("vendor_agreements:read"),
+	),
+}

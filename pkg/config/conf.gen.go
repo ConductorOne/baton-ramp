@@ -8,6 +8,7 @@ type Ramp struct {
 	RampClientId string `mapstructure:"ramp-client-id"`
 	RampClientSecret string `mapstructure:"ramp-client-secret"`
 	RampBaseUrl string `mapstructure:"ramp-base-url"`
+	VendorManagement bool `mapstructure:"vendor-management"`
 }
 
 func (c *Ramp) findFieldByTag(tagValue string) (any, bool) {

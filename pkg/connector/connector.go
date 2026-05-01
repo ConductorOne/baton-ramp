@@ -13,8 +13,15 @@ import (
 )
 
 type Connector struct {
-	client  *client.Client
-	baseURL string
+	client                  *client.Client
+	baseURL                 string
+	vendorManagementEnabled bool
+
+	// businessID is the Ramp business id, populated during Validate().
+	// Used as source_business_id on emitted VendorTrait /
+	// VendorAgreementTrait annotations so consumers can disambiguate
+	// when one customer manages multiple Ramp businesses.
+	businessID string
 }
 
 type Option func(*Connector) error
@@ -28,13 +35,39 @@ func WithBaseURL(baseURL string) Option {
 	}
 }
 
+// WithVendorManagement opts the connector into the vendor-management
+// surface: emits VendorTrait on vendor resources, syncs vendor_agreement
+// resources, and exposes the audit-log incremental-sync feed. Default
+// false. Existing installs see no change unless this is enabled.
+func WithVendorManagement(enabled bool) Option {
+	return func(c *Connector) error {
+		c.vendorManagementEnabled = enabled
+		return nil
+	}
+}
+
 // ResourceSyncers returns a ResourceSyncer for each resource type that should be synced from the upstream service.
 func (d *Connector) ResourceSyncers(ctx context.Context) []connectorbuilder.ResourceSyncer {
-	return []connectorbuilder.ResourceSyncer{
+	syncers := []connectorbuilder.ResourceSyncer{
 		newUserBuilder(d.client),
 		newRoleBuilder(d.client),
-		newVendorBuilder(d.client),
+		newVendorBuilder(d.client, d.vendorManagementEnabled, d.BusinessID),
 	}
+	if d.vendorManagementEnabled {
+		syncers = append(syncers, newVendorAgreementBuilder(d.client, d.BusinessID))
+	}
+	return syncers
+}
+
+// EventFeeds advertises the audit-log feed when vendor-management is
+// enabled. Required for incremental sync via the platform's
+// BatonFeedConsumerWorkflow. Returns nil otherwise (no feeds advertised
+// = zero audit-log API calls).
+func (d *Connector) EventFeeds(ctx context.Context) []connectorbuilder.EventFeed {
+	if !d.vendorManagementEnabled {
+		return nil
+	}
+	return []connectorbuilder.EventFeed{newAuditEventFeed(d.client)}
 }
 
 // Asset takes an input AssetRef and attempts to fetch it using the connector's authenticated http client
@@ -88,10 +121,28 @@ func (d *Connector) Metadata(ctx context.Context) (*v2.ConnectorMetadata, error)
 	}, nil
 }
 
-// Validate is called to ensure that the connector is properly configured. It should exercise any API credentials
-// to be sure that they are valid.
+// Validate exercises the configured credentials. Calls
+// GET /developer/v1/business: a cheap, scope-checked probe that also
+// caches the Ramp business id for use as source_business_id on emitted
+// vendor / vendor_agreement traits.
 func (d *Connector) Validate(ctx context.Context) (annotations.Annotations, error) {
-	return nil, nil
+	var annos annotations.Annotations
+	if d.client == nil {
+		return annos, fmt.Errorf("baton-ramp: connector client not configured")
+	}
+	business, ratelimitData, err := d.client.GetBusiness(ctx)
+	annos.WithRateLimiting(ratelimitData)
+	if err != nil {
+		return annos, fmt.Errorf("baton-ramp: validate failed: %w", err)
+	}
+	d.businessID = business.ID
+	return annos, nil
+}
+
+// BusinessID returns the cached Ramp business id (populated by Validate).
+// Empty when Validate has not run yet.
+func (d *Connector) BusinessID() string {
+	return d.businessID
 }
 
 // WithToken configures the connector to use an access token.
