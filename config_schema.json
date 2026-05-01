@@ -131,6 +131,12 @@
       "stringField": {
         "defaultValue": "https://api.ramp.com"
       }
+    },
+    {
+      "name": "vendor-management",
+      "displayName": "Sync vendor management data",
+      "description": "Enable to sync vendor agreements (contracts), pre-aggregated spend, and audit-log change events from Ramp's vendor-management surface. Adds the vendor_agreements:read OAuth scope. Default off.",
+      "boolField": {}
     }
   ],
   "displayName": "Ramp",
@@ -143,7 +149,8 @@
       "helpText": "Authenticate using a Ramp API access token.",
       "fields": [
         "token",
-        "ramp-base-url"
+        "ramp-base-url",
+        "vendor-management"
       ],
       "default": true
     },
@@ -154,7 +161,8 @@
       "fields": [
         "ramp-client-id",
         "ramp-client-secret",
-        "ramp-base-url"
+        "ramp-base-url",
+        "vendor-management"
       ]
     }
   ]

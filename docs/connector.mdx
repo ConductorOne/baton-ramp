@@ -210,7 +210,27 @@ Carefully copy and save these credentials. We'll use them in Step 2.
 
 Create two Kubernetes manifest files for your Ramp connector deployment.
 
-Use the credentials you gathered earlier and pick the secret template that matches your chosen authentication method.
+The Ramp connector supports two authentication methods — pick one when populating the secret:
+
+- **Access Token** — a long-lived Ramp API access token.
+- **OAuth 2.0 Client Credentials** — a Ramp OAuth client ID and secret (the connector exchanges them for a short-lived access token automatically, via `https://api.ramp.com/developer/v1/token`).
+
+See the [Ramp authorization docs](https://docs.ramp.com/developer-api/v1/authorization) for how to create an OAuth app with the `Client Credentials` grant type and the following scopes:
+
+- **Always required**: `users:read`, `users:write`, `vendors:read`, `vendors:write`, `business:read`.
+- **Required only if `BATON_VENDOR_MANAGEMENT=true`**: `vendor_agreements:read`.
+
+The connector points at `https://api.ramp.com` by default. Set `BATON_RAMP_BASE_URL` (or the **Ramp API Base URL** field) to `https://demo-api.ramp.com` (or another Ramp environment) to override.
+
+### Optional: vendor management
+
+The connector ships with an opt-in vendor-management surface. When `BATON_VENDOR_MANAGEMENT=true` (or the **Sync vendor management data** toggle is enabled in the C1 UI), the connector additionally:
+
+- Decorates each Ramp vendor with cross-system identity and pre-aggregated trailing-window spend (30-day, 365-day, year-to-date).
+- Syncs Ramp vendor agreements as their own resources, including term, renewal status, total contract value, and contract owners.
+- Exposes Ramp's audit-log API as an event feed so vendor and agreement changes flow into C1 incrementally between full syncs.
+
+This requires the additional `vendor_agreements:read` OAuth scope above. When the flag is unset (the default), no vendor-management data is synced, no extra scopes are requested, and the audit-log API is not called.
 
 #### Secrets configuration
 
@@ -233,6 +253,10 @@ stringData:
 
   # Optional: include if you want C1 to provision access using this connector
   BATON_PROVISIONING: true
+
+  # Optional: enable Ramp's vendor-management surface (vendor agreements,
+  # pre-aggregated spend, audit-log incremental sync). Default off.
+  BATON_VENDOR_MANAGEMENT: "true"
 ```
 
 **Option B — OAuth 2.0 Client Credentials:**
@@ -255,6 +279,12 @@ stringData:
 
   # Optional: include if you want C1 to provision access using this connector
   BATON_PROVISIONING: true
+
+  # Optional: enable Ramp's vendor-management surface (vendor agreements,
+  # pre-aggregated spend, audit-log incremental sync). Default off.
+  # When set, the OAuth client must also have the `vendor_agreements:read`
+  # scope.
+  BATON_VENDOR_MANAGEMENT: "true"
 ```
 
 See the connector's README or run `--help` to see all available configuration flags and environment variables.
