@@ -13,6 +13,8 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
+const actionReturnSuccess = "success"
+
 func (d *Connector) GlobalActions(ctx context.Context, registry actions.ActionRegistry) error {
 	l := ctxzap.Extract(ctx)
 
@@ -33,7 +35,7 @@ func (d *Connector) GlobalActions(ctx context.Context, registry actions.ActionRe
 		},
 		ReturnTypes: []*config_sdk.Field{
 			{
-				Name:        "success",
+				Name:        actionReturnSuccess,
 				DisplayName: "Success",
 				Field:       &config_sdk.Field_BoolField{},
 			},
@@ -68,7 +70,7 @@ func (d *Connector) GlobalActions(ctx context.Context, registry actions.ActionRe
 		},
 		ReturnTypes: []*config_sdk.Field{
 			{
-				Name:        "success",
+				Name:        actionReturnSuccess,
 				DisplayName: "Success",
 				Field:       &config_sdk.Field_BoolField{},
 			},
@@ -105,14 +107,14 @@ func (d *Connector) handleDisableUser(ctx context.Context, args *structpb.Struct
 	if err != nil {
 		return &structpb.Struct{
 			Fields: map[string]*structpb.Value{
-				"success": structpb.NewBoolValue(false),
+				actionReturnSuccess: structpb.NewBoolValue(false),
 			},
 		}, annos, fmt.Errorf("ramp-connector: failed to disable user: %w", err)
 	}
 
 	return &structpb.Struct{
 		Fields: map[string]*structpb.Value{
-			"success": structpb.NewBoolValue(true),
+			actionReturnSuccess: structpb.NewBoolValue(true),
 		},
 	}, annos, nil
 }
@@ -133,14 +135,14 @@ func (d *Connector) handleEnableUser(ctx context.Context, args *structpb.Struct)
 	if err != nil {
 		return &structpb.Struct{
 			Fields: map[string]*structpb.Value{
-				"success": structpb.NewBoolValue(false),
+				actionReturnSuccess: structpb.NewBoolValue(false),
 			},
 		}, annos, fmt.Errorf("ramp-connector: failed to enable user: %w", err)
 	}
 
 	return &structpb.Struct{
 		Fields: map[string]*structpb.Value{
-			"success": structpb.NewBoolValue(true),
+			actionReturnSuccess: structpb.NewBoolValue(true),
 		},
 	}, annos, nil
 }
