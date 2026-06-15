@@ -14,6 +14,16 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+const (
+	// resourceNameVendorMerchant is Ramp's audit-log ResourceName for vendor
+	// (a.k.a. merchant) records. Spelled exactly per the Ramp spec.
+	resourceNameVendorMerchant = "Vendor / Merchant"
+
+	// eventTypeAgreementStatusChanged is the Ramp audit event type emitted when
+	// an agreement's status changes. Spelled exactly per the Ramp spec.
+	eventTypeAgreementStatusChanged = "Vendor management agreement status changed"
+)
+
 // auditEventFeed implements connectorbuilder.EventFeed against Ramp's
 // audit-log API. Filters to vendor-management events (vendors and
 // agreements) and emits one ResourceChangeEvent per event for the
@@ -162,28 +172,28 @@ var vendorManagementEventTypes = map[string]struct{}{
 	// Vendor lifecycle.
 	"Vendor management  vendor added to managed list":     {},
 	"Vendor management  vendor removed from managed list": {},
-	"Draft vendor created":                                 {},
-	"Draft vendor published":                               {},
-	"Merged vendors":                                       {},
-	"Vendor placed on hold":                                {},
-	"Vendor hold released":                                 {},
-	"Vendor imported from erp":                             {},
+	"Draft vendor created":                                {},
+	"Draft vendor published":                              {},
+	"Merged vendors":                                      {},
+	"Vendor placed on hold":                               {},
+	"Vendor hold released":                                {},
+	"Vendor imported from erp":                            {},
 
 	// Agreement lifecycle.
-	"Vendor management agreement status changed":              {},
-	"Vendor management edited agreement field":                {},
-	"Vendor management agreement notification type switched":  {},
-	"Vendor management agreement linked document":             {},
-	"Vendor management agreement unlinked document":           {},
-	"Vendor management agreement uploaded document":           {},
-	"Vendor management agreement deleted document":            {},
-	"Vendor management agreement linked purchase order":       {},
-	"Vendor management agreement unlinked purchase order":     {},
-	"Vendor management expansion request status changed":      {},
-	"Generated renewal brief for contract":                    {},
-	"Combined contracts with this contract":                   {},
-	"Bill linked to contract":                                 {},
-	"Bill unlinked from contract":                             {},
+	eventTypeAgreementStatusChanged:                          {},
+	"Vendor management edited agreement field":               {},
+	"Vendor management agreement notification type switched": {},
+	"Vendor management agreement linked document":            {},
+	"Vendor management agreement unlinked document":          {},
+	"Vendor management agreement uploaded document":          {},
+	"Vendor management agreement deleted document":           {},
+	"Vendor management agreement linked purchase order":      {},
+	"Vendor management agreement unlinked purchase order":    {},
+	"Vendor management expansion request status changed":     {},
+	"Generated renewal brief for contract":                   {},
+	"Combined contracts with this contract":                  {},
+	"Bill linked to contract":                                {},
+	"Bill unlinked from contract":                            {},
 	// Skipped on purpose:
 	//   "Vendor management agreement deleted" — deleted resources fail
 	//   subsequent Get() calls during incremental sync. The next full
@@ -198,7 +208,7 @@ func shouldSkipAuditEvent(ae *client.AuditLogEvent) bool {
 		return true
 	}
 	// We only care about events targeting a vendor / merchant.
-	if ae.PrimaryReference.ResourceName != "Vendor / Merchant" {
+	if ae.PrimaryReference.ResourceName != resourceNameVendorMerchant {
 		return true
 	}
 	if _, ok := vendorManagementEventTypes[ae.EventType]; !ok {
