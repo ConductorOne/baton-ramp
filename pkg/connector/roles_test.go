@@ -42,7 +42,6 @@ func TestValidCreateRolesMatchRampCreateEnum(t *testing.T) {
 		roleIDAuditor:            true,
 		roleIDBusinessAdmin:      true,
 		roleIDBusinessBookkeeper: true,
-		roleIDBusinessOwner:      true,
 		roleIDBusinessUser:       true,
 		roleIDGuestUser:          true,
 		roleIDITAdmin:            true,

@@ -22,7 +22,6 @@ var validCreateRoles = map[string]bool{
 	roleIDAuditor:            true,
 	roleIDBusinessAdmin:      true,
 	roleIDBusinessBookkeeper: true,
-	roleIDBusinessOwner:      true,
 	roleIDBusinessUser:       true,
 	roleIDGuestUser:          true,
 	roleIDITAdmin:            true,
@@ -130,7 +129,7 @@ func (o *userBuilder) CreateAccount(
 	role := roleVal.GetStringValue()
 	if !validCreateRoles[role] {
 		return nil, nil, nil, grpcstatus.Errorf(codes.InvalidArgument,
-			"ramp-connector: invalid role %q, must be one of AUDITOR, BUSINESS_ADMIN, BUSINESS_BOOKKEEPER, BUSINESS_OWNER, BUSINESS_USER, GUEST_USER, IT_ADMIN",
+			"ramp-connector: invalid role %q, must be one of AUDITOR, BUSINESS_ADMIN, BUSINESS_BOOKKEEPER, BUSINESS_USER, GUEST_USER, IT_ADMIN",
 			role)
 	}
 

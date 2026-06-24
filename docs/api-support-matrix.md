@@ -77,7 +77,7 @@ Roles are not fetched from a Ramp roles endpoint. The connector creates static r
 | `AUDITOR` | Auditor | No | Yes | Yes |
 | `BUSINESS_ADMIN` | Admin | Yes | Yes | Yes |
 | `BUSINESS_BOOKKEEPER` | Bookkeeper | Yes | Yes | Yes |
-| `BUSINESS_OWNER` | Owner | Yes | Yes | Yes |
+| `BUSINESS_OWNER` | Owner | Yes | Yes | No |
 | `BUSINESS_USER` | User | Yes | Yes | Yes |
 | `GUEST_USER` | Guest | No | Yes | Yes |
 | `IT_ADMIN` | IT Admin | Yes | Yes | Yes |
@@ -95,7 +95,7 @@ Fields from `POST /developer/v1/users/deferred`.
 | `email` | string | Full | `pkg/connector/connector.go`, `pkg/connector/users.go` | Required account creation field. |
 | `first_name` | string | Full | `pkg/connector/connector.go`, `pkg/connector/users.go` | Required account creation field. |
 | `last_name` | string | Full | `pkg/connector/connector.go`, `pkg/connector/users.go` | Required account creation field. |
-| `role` | enum | Full | `pkg/connector/connector.go`, `pkg/connector/users.go` | Required; accepts the Ramp create enum. |
+| `role` | enum | Full | `pkg/connector/connector.go`, `pkg/connector/users.go` | Required; accepts API-invitable roles only. Ramp can return `BUSINESS_OWNER` and `UNBUNDLED_*` on reads, but those values are not accepted for account creation. |
 | `idempotency_key` | string | Internal | `pkg/client/users.go` | Generated automatically when not supplied. |
 | `department_id` | string | Missing | n/a | Not exposed in C1 account creation schema. |
 | `direct_manager_id` | string | Missing | n/a | Not exposed in C1 account creation schema. |
