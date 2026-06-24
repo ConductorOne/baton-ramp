@@ -58,11 +58,12 @@ func (f *auditEventFeed) EventFeedMetadata(ctx context.Context) *v2.EventFeedMet
 
 // eventPageToken is what we marshal into the StreamToken cursor between
 // polls. NextPageToken is Ramp's opaque page.next; LastEventTime is the
-// max event_time we've seen, used as a defensive lower bound on the next
-// poll in case Ramp returns out-of-order events.
+// max event_time we've seen. FloorEventTime is fixed at the start of a
+// paginated stream so descending pages don't get filtered by page 1's max.
 type eventPageToken struct {
-	NextPageToken string    `json:"next_page_token,omitempty"`
-	LastEventTime time.Time `json:"last_event_time,omitempty"`
+	NextPageToken  string    `json:"next_page_token,omitempty"`
+	LastEventTime  time.Time `json:"last_event_time,omitempty"`
+	FloorEventTime time.Time `json:"floor_event_time,omitempty"`
 }
 
 func decodeEventPageToken(s string) (*eventPageToken, error) {
@@ -101,16 +102,20 @@ func (f *auditEventFeed) ListEvents(
 		return nil, nil, annos, err
 	}
 
-	// On the very first call, earliestEvent is set by the platform to
+	// On the first page of a poll, earliestEvent is set by the platform to
 	// the time of the last successful sync; events older than that have
-	// already been incorporated. On subsequent calls cursor.NextPageToken
-	// drives pagination through Ramp.
-	earliest := time.Time{}
+	// already been incorporated. Keep that floor stable while consuming
+	// Ramp cursor pages, because Ramp may return audit pages newest-first.
+	floor := time.Time{}
 	if earliestEvent != nil {
-		earliest = earliestEvent.AsTime()
+		floor = earliestEvent.AsTime()
 	}
-	if cursor.LastEventTime.After(earliest) {
-		earliest = cursor.LastEventTime
+	if cursor.NextPageToken != "" {
+		if !cursor.FloorEventTime.IsZero() {
+			floor = cursor.FloorEventTime
+		}
+	} else if cursor.LastEventTime.After(floor) {
+		floor = cursor.LastEventTime
 	}
 
 	auditEvents, nextPageToken, ratelimitData, err := f.client.ListAuditLogEvents(ctx, cursor.NextPageToken)
@@ -131,7 +136,7 @@ func (f *auditEventFeed) ListEvents(
 		if eventTime.After(maxEventTime) {
 			maxEventTime = eventTime
 		}
-		if !earliest.IsZero() && !eventTime.After(earliest) {
+		if !floor.IsZero() && !eventTime.After(floor) {
 			// Already seen in a prior poll; defensive against out-of-
 			// order delivery.
 			continue
@@ -149,10 +154,14 @@ func (f *auditEventFeed) ListEvents(
 	state := &pagination.StreamState{
 		HasMore: nextPageToken != "",
 	}
-	state.Cursor, err = encodeEventPageToken(&eventPageToken{
+	nextCursor := &eventPageToken{
 		NextPageToken: nextPageToken,
 		LastEventTime: maxEventTime,
-	})
+	}
+	if nextPageToken != "" {
+		nextCursor.FloorEventTime = floor
+	}
+	state.Cursor, err = encodeEventPageToken(nextCursor)
 	if err != nil {
 		return nil, nil, annos, err
 	}
