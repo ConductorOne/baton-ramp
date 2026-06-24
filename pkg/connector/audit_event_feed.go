@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -252,10 +253,8 @@ func shouldSkipAuditEvent(ae *client.AuditLogEvent) bool {
 	if _, ok := vendorManagementEventTypes[ae.EventType]; !ok {
 		return true
 	}
-	if ae.PrimaryReference.ID == "" {
-		return true
-	}
-	return false
+	_, resourceID := auditEventResourceTarget(ae.PrimaryReference)
+	return resourceID == ""
 }
 
 // toResourceChangeEvent maps an audit-log entry to a v2.Event. The
@@ -267,12 +266,14 @@ func shouldSkipAuditEvent(ae *client.AuditLogEvent) bool {
 // produce vendor_agreement events; everything else (including vendors)
 // produces vendor events.
 func (f *auditEventFeed) toResourceChangeEvent(ae *client.AuditLogEvent, eventTime time.Time) *v2.Event {
-	resourceType := "vendor"
-	if isAgreementURL(ae.PrimaryReference.URL) {
+	resourceType, resourceID := auditEventResourceTarget(ae.PrimaryReference)
+	if resourceID == "" {
+		return nil
+	}
+	if resourceType == vendorAgreementResourceTypeID {
 		if !f.vendorAgreementsEnabled {
 			return nil
 		}
-		resourceType = "vendor_agreement"
 	}
 	return v2.Event_builder{
 		Id:         ae.ID,
@@ -280,15 +281,51 @@ func (f *auditEventFeed) toResourceChangeEvent(ae *client.AuditLogEvent, eventTi
 		ResourceChangeEvent: v2.ResourceChangeEvent_builder{
 			ResourceId: v2.ResourceId_builder{
 				ResourceType: resourceType,
-				Resource:     ae.PrimaryReference.ID,
+				Resource:     resourceID,
 			}.Build(),
 		}.Build(),
 	}.Build()
 }
 
+func auditEventResourceTarget(ref *client.AuditLogReference) (string, string) {
+	if ref == nil {
+		return "", ""
+	}
+	if isAgreementURL(ref.URL) {
+		return vendorAgreementResourceTypeID, agreementIDFromURL(ref.URL)
+	}
+	if ref.ID == "" {
+		return "", ""
+	}
+	return vendorResourceTypeID, ref.ID
+}
+
 // isAgreementURL recognises Ramp's contract page URLs. The audit log's
 // primary_reference.url is relative-ish (path-only or full URL); both
 // shapes contain "/contracts/" for agreement-targeted entries.
-func isAgreementURL(url string) bool {
-	return strings.Contains(url, "/contracts/")
+func isAgreementURL(refURL string) bool {
+	return strings.Contains(refURL, "/contracts/")
+}
+
+func agreementIDFromURL(refURL string) string {
+	const contractPath = "/contracts/"
+	idx := strings.Index(refURL, contractPath)
+	if idx == -1 {
+		return ""
+	}
+	rest := refURL[idx+len(contractPath):]
+	if rest == "" {
+		return ""
+	}
+	if cut := strings.IndexAny(rest, "/?#"); cut >= 0 {
+		rest = rest[:cut]
+	}
+	if rest == "" {
+		return ""
+	}
+	id, err := url.PathUnescape(rest)
+	if err != nil {
+		return rest
+	}
+	return id
 }

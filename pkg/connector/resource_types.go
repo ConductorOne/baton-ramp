@@ -15,11 +15,17 @@ func capabilityPermissions(perms ...string) *v2.CapabilityPermissions {
 
 // Ramp OAuth scopes reference: https://docs.ramp.com/developer-api/v1/authorization
 
-const userResourceTypeDisplayName = "User"
+const (
+	userResourceTypeID            = "user"
+	userResourceTypeDisplayName   = "User"
+	roleResourceTypeID            = "role"
+	vendorResourceTypeID          = "vendor"
+	vendorAgreementResourceTypeID = "vendor_agreement"
+)
 
 // The user resource type is for all user objects from the database.
 var userResourceType = &v2.ResourceType{
-	Id:          "user",
+	Id:          userResourceTypeID,
 	DisplayName: userResourceTypeDisplayName,
 	Traits:      []v2.ResourceType_Trait{v2.ResourceType_TRAIT_USER},
 	Annotations: annotations.New(
@@ -28,7 +34,7 @@ var userResourceType = &v2.ResourceType{
 }
 
 var roleResourceType = &v2.ResourceType{
-	Id:          "role",
+	Id:          roleResourceTypeID,
 	DisplayName: "Role",
 	Traits:      []v2.ResourceType_Trait{v2.ResourceType_TRAIT_ROLE},
 	Annotations: annotations.New(
@@ -37,7 +43,7 @@ var roleResourceType = &v2.ResourceType{
 }
 
 var vendorResourceType = &v2.ResourceType{
-	Id:          "vendor",
+	Id:          vendorResourceTypeID,
 	DisplayName: "Vendor",
 	Traits:      []v2.ResourceType_Trait{v2.ResourceType_TRAIT_VENDOR},
 	Annotations: annotations.New(
@@ -49,7 +55,7 @@ var vendorResourceType = &v2.ResourceType{
 // every agreement names the vendor it covers) and TRAIT_VENDOR_AGREEMENT
 // (the agreement payload). Resource ID is the Ramp agreement UUID.
 var vendorAgreementResourceType = &v2.ResourceType{
-	Id:          "vendor_agreement",
+	Id:          vendorAgreementResourceTypeID,
 	DisplayName: "Vendor Agreement",
 	Traits: []v2.ResourceType_Trait{
 		v2.ResourceType_TRAIT_VENDOR,

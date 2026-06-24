@@ -63,6 +63,30 @@ func TestShouldSkipAuditEvent(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "agreement id from url",
+			in: &client.AuditLogEvent{
+				EventType: "Vendor management agreement status changed",
+				PrimaryReference: &client.AuditLogReference{
+					ResourceName: "Vendor / Merchant",
+					ID:           "",
+					URL:          "/contracts/agreement-id",
+				},
+			},
+			want: false,
+		},
+		{
+			name: "malformed agreement url",
+			in: &client.AuditLogEvent{
+				EventType: "Vendor management agreement status changed",
+				PrimaryReference: &client.AuditLogReference{
+					ResourceName: "Vendor / Merchant",
+					ID:           "vendor-id",
+					URL:          "/contracts/",
+				},
+			},
+			want: true,
+		},
+		{
 			name: "happy path: agreement status changed",
 			in: &client.AuditLogEvent{
 				EventType: "Vendor management agreement status changed",
@@ -105,6 +129,32 @@ func TestShouldSkipAuditEvent(t *testing.T) {
 				t.Fatalf("got %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestAuditEventFeedMapsAgreementEventsToContractURLID(t *testing.T) {
+	eventTime := time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC)
+	agreementEvent := &client.AuditLogEvent{
+		ID:        "event-1",
+		EventType: "Vendor management agreement status changed",
+		PrimaryReference: &client.AuditLogReference{
+			ResourceName: resourceNameVendorMerchant,
+			ID:           "vendor-1",
+			URL:          "https://app.ramp.com/contracts/agreement-1?tab=activity",
+		},
+	}
+
+	feed := newAuditEventFeed(nil, true)
+	got := feed.toResourceChangeEvent(agreementEvent, eventTime)
+	if got == nil {
+		t.Fatal("expected agreement event to be emitted")
+	}
+	resourceID := got.GetResourceChangeEvent().GetResourceId()
+	if resourceID.GetResourceType() != vendorAgreementResourceTypeID {
+		t.Fatalf("expected %s resource type, got %q", vendorAgreementResourceTypeID, resourceID.GetResourceType())
+	}
+	if resourceID.GetResource() != "agreement-1" {
+		t.Fatalf("expected agreement id from URL, got %q", resourceID.GetResource())
 	}
 }
 
