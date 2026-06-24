@@ -27,6 +27,8 @@ sidebarTitle: Ramp
 **Vendor owner is single-assignee.** Each Ramp vendor can have only one owner at a time. Granting the vendor owner entitlement to a new user overwrites the previous owner in Ramp — the prior owner is silently removed. Revoking the entitlement clears the owner only when the principal being revoked is the current owner.
 </Note>
 
+Synced Ramp vendors are emitted as C1 vendor resources with Ramp vendor identity metadata. Vendor owner access is represented as the `owner` entitlement on each vendor.
+
 The Ramp connector supports [automatic account provisioning](/product/admin/account-provisioning).
 
 ### Connector actions
