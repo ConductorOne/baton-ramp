@@ -133,9 +133,9 @@
       }
     },
     {
-      "name": "vendor-management",
-      "displayName": "Sync vendor management data",
-      "description": "Enable to sync vendor agreements (contracts), pre-aggregated spend, and audit-log change events from Ramp's vendor-management surface. Adds the business:read and vendor_agreements:read OAuth scopes. Default off.",
+      "name": "audit-log-events",
+      "displayName": "Sync audit log events",
+      "description": "Enable Ramp audit-log polling for incremental sync events. Adds the audit_logs:read OAuth scope. Default off.",
       "boolField": {}
     }
   ],
@@ -150,7 +150,7 @@
       "fields": [
         "token",
         "ramp-base-url",
-        "vendor-management"
+        "audit-log-events"
       ],
       "default": true
     },
@@ -162,7 +162,7 @@
         "ramp-client-id",
         "ramp-client-secret",
         "ramp-base-url",
-        "vendor-management"
+        "audit-log-events"
       ]
     }
   ]

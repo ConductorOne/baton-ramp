@@ -15,13 +15,8 @@ import (
 type Connector struct {
 	client                  *client.Client
 	baseURL                 string
-	vendorManagementEnabled bool
-
-	// businessID is the Ramp business id, populated during Validate().
-	// Used as source_business_id on emitted VendorTrait /
-	// VendorAgreementTrait annotations so consumers can disambiguate
-	// when one customer manages multiple Ramp businesses.
-	businessID string
+	disableVendorAgreements bool
+	auditLogEventsEnabled   bool
 }
 
 type Option func(*Connector) error
@@ -35,13 +30,22 @@ func WithBaseURL(baseURL string) Option {
 	}
 }
 
-// WithVendorManagement opts the connector into the vendor-management
-// surface: emits VendorTrait on vendor resources, syncs vendor_agreement
-// resources, and exposes the audit-log incremental-sync feed. Default
-// false. Existing installs see no change unless this is enabled.
-func WithVendorManagement(enabled bool) Option {
+// WithVendorAgreements controls the vendor_agreement resource syncer. The
+// resource type is advertised with OptInRequired so C1 resource-type
+// enablement decides whether it is included in normal platform syncs.
+func WithVendorAgreements(enabled bool) Option {
 	return func(c *Connector) error {
-		c.vendorManagementEnabled = enabled
+		c.disableVendorAgreements = !enabled
+		return nil
+	}
+}
+
+// WithAuditLogEvents opts the connector into Ramp audit-log polling for
+// incremental sync. Default false so installs without audit_logs:read keep
+// working.
+func WithAuditLogEvents(enabled bool) Option {
+	return func(c *Connector) error {
+		c.auditLogEventsEnabled = enabled
 		return nil
 	}
 }
@@ -51,23 +55,21 @@ func (d *Connector) ResourceSyncers(ctx context.Context) []connectorbuilder.Reso
 	syncers := []connectorbuilder.ResourceSyncer{
 		newUserBuilder(d.client),
 		newRoleBuilder(d.client),
-		newVendorBuilder(d.client, d.vendorManagementEnabled, d.BusinessID),
+		newVendorBuilder(d.client),
 	}
-	if d.vendorManagementEnabled {
-		syncers = append(syncers, newVendorAgreementBuilder(d.client, d.BusinessID))
+	if !d.disableVendorAgreements {
+		syncers = append(syncers, newVendorAgreementBuilder(d.client))
 	}
 	return syncers
 }
 
-// EventFeeds advertises the audit-log feed when vendor-management is
-// enabled. Required for incremental sync via the platform's
-// BatonFeedConsumerWorkflow. Returns nil otherwise (no feeds advertised
-// = zero audit-log API calls).
+// EventFeeds advertises the audit-log feed when audit-log-events is enabled.
+// Returns nil otherwise (no feeds advertised = zero audit-log API calls).
 func (d *Connector) EventFeeds(ctx context.Context) []connectorbuilder.EventFeed {
-	if !d.vendorManagementEnabled {
+	if !d.auditLogEventsEnabled {
 		return nil
 	}
-	return []connectorbuilder.EventFeed{newAuditEventFeed(d.client)}
+	return []connectorbuilder.EventFeed{newAuditEventFeed(d.client, !d.disableVendorAgreements)}
 }
 
 // Asset takes an input AssetRef and attempts to fetch it using the connector's authenticated http client
@@ -121,31 +123,17 @@ func (d *Connector) Metadata(ctx context.Context) (*v2.ConnectorMetadata, error)
 	}, nil
 }
 
-// Validate exercises configured credentials for vendor-management mode.
-// GET /developer/v1/business is skipped in the default mode so existing
-// installs without business:read keep working.
 func (d *Connector) Validate(ctx context.Context) (annotations.Annotations, error) {
 	var annos annotations.Annotations
 	if d.client == nil {
 		return annos, fmt.Errorf("baton-ramp: connector client not configured")
 	}
-	if !d.vendorManagementEnabled {
-		return annos, nil
-	}
-	business, ratelimitData, err := d.client.GetBusiness(ctx)
+	_, ratelimitData, err := d.client.ListUsers(ctx, "")
 	annos.WithRateLimiting(ratelimitData)
 	if err != nil {
 		return annos, fmt.Errorf("baton-ramp: validate failed: %w", err)
 	}
-	d.businessID = business.ID
 	return annos, nil
-}
-
-// BusinessID returns the cached Ramp business id populated by Validate in
-// vendor-management mode. Empty when vendor-management is disabled or
-// Validate has not run yet.
-func (d *Connector) BusinessID() string {
-	return d.businessID
 }
 
 // WithToken configures the connector to use an access token.

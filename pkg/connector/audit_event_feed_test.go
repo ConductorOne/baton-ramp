@@ -77,7 +77,7 @@ func TestShouldSkipAuditEvent(t *testing.T) {
 		{
 			name: "happy path: vendor added to managed list (note double space)",
 			in: &client.AuditLogEvent{
-				EventType: "Vendor management  vendor added to managed list",
+				EventType: eventTypeVendorAddedToManagedList,
 				PrimaryReference: &client.AuditLogReference{
 					ResourceName: "Vendor / Merchant",
 					ID:           "vendor-id",
@@ -177,7 +177,7 @@ func TestAuditEventFeedListEventsKeepsFloorStableAcrossDescendingPages(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	feed := newAuditEventFeed(c)
+	feed := newAuditEventFeed(c, true)
 
 	firstEvents, firstState, _, err := feed.ListEvents(ctx, timestamppb.New(earliest), &pagination.StreamToken{})
 	if err != nil {
@@ -227,11 +227,105 @@ func TestAuditEventFeedListEventsKeepsFloorStableAcrossDescendingPages(t *testin
 	}
 }
 
+func TestAuditEventFeedStopsDescendingPaginationAtFloor(t *testing.T) {
+	ctx := context.Background()
+	earliest := time.Date(2026, 1, 1, 8, 0, 0, 0, time.UTC)
+	firstPageTime := time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC)
+	secondPageTime := time.Date(2026, 1, 1, 7, 0, 0, 0, time.UTC)
+
+	var requests []string
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.URL.RequestURI())
+		w.Header().Set("Content-Type", "application/json")
+
+		switch len(requests) {
+		case 1:
+			_, _ = w.Write([]byte(auditEventListResponse(
+				"event-1",
+				firstPageTime,
+				"vendor-1",
+				"/vendors/vendor-1",
+				server.URL+"/developer/v1/audit-logs/events?start=cursor-1",
+			)))
+		case 2:
+			_, _ = w.Write([]byte(auditEventListResponse(
+				"event-old",
+				secondPageTime,
+				"vendor-old",
+				"/vendors/vendor-old",
+				server.URL+"/developer/v1/audit-logs/events?start=cursor-2",
+			)))
+		default:
+			t.Fatalf("unexpected request %d: %s", len(requests), r.URL.RequestURI())
+		}
+	}))
+	defer server.Close()
+
+	c, err := client.New(ctx, client.Token{AccessToken: "token"}, server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	feed := newAuditEventFeed(c, true)
+
+	_, firstState, _, err := feed.ListEvents(ctx, timestamppb.New(earliest), &pagination.StreamToken{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if firstState == nil || !firstState.HasMore {
+		t.Fatalf("expected first state to have more pages, got %+v", firstState)
+	}
+
+	secondEvents, secondState, _, err := feed.ListEvents(ctx, timestamppb.New(earliest), &pagination.StreamToken{Cursor: firstState.Cursor})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(secondEvents) != 0 {
+		t.Fatalf("expected old page to emit no events, got %+v", secondEvents)
+	}
+	if secondState == nil || secondState.HasMore {
+		t.Fatalf("expected old descending page to terminate pagination, got %+v", secondState)
+	}
+	if len(requests) != 2 {
+		t.Fatalf("expected early stop after 2 requests, got %d", len(requests))
+	}
+}
+
+func TestAuditEventFeedSkipsAgreementEventsWhenAgreementsDisabled(t *testing.T) {
+	eventTime := time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC)
+	agreementEvent := &client.AuditLogEvent{
+		ID:        "event-1",
+		EventType: "Vendor management agreement status changed",
+		PrimaryReference: &client.AuditLogReference{
+			ResourceName: resourceNameVendorMerchant,
+			ID:           "agreement-1",
+			URL:          "/contracts/agreement-1",
+		},
+	}
+	vendorEvent := &client.AuditLogEvent{
+		ID:        "event-2",
+		EventType: eventTypeVendorAddedToManagedList,
+		PrimaryReference: &client.AuditLogReference{
+			ResourceName: resourceNameVendorMerchant,
+			ID:           "vendor-1",
+			URL:          "/vendors/vendor-1",
+		},
+	}
+
+	feed := newAuditEventFeed(nil, false)
+	if got := feed.toResourceChangeEvent(agreementEvent, eventTime); got != nil {
+		t.Fatalf("expected disabled agreement event to be skipped, got %+v", got)
+	}
+	if got := feed.toResourceChangeEvent(vendorEvent, eventTime); got == nil {
+		t.Fatal("expected vendor event to be emitted")
+	}
+}
+
 func auditEventListResponse(eventID string, eventTime time.Time, referenceID string, referenceURL string, next string) string {
 	return fmt.Sprintf(
 		`{"data":[{"id":%q,"event_type":%q,"event_time":%q,"primary_reference":{"id":%q,"resource_name":%q,"url":%q}}],"page":{"next":%q}}`,
 		eventID,
-		"Vendor management  vendor added to managed list",
+		eventTypeVendorAddedToManagedList,
 		eventTime.Format(time.RFC3339),
 		referenceID,
 		resourceNameVendorMerchant,

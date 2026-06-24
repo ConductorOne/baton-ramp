@@ -89,6 +89,7 @@
       },
       "capabilities": [
         "CAPABILITY_SYNC",
+        "CAPABILITY_TARGETED_SYNC",
         "CAPABILITY_PROVISION"
       ],
       "permissions": {
@@ -101,13 +102,50 @@
           }
         ]
       }
+    },
+    {
+      "resourceType": {
+        "id": "vendor_agreement",
+        "displayName": "Vendor Agreement",
+        "traits": [
+          "TRAIT_VENDOR",
+          "TRAIT_VENDOR_AGREEMENT"
+        ],
+        "annotations": [
+          {
+            "@type": "type.googleapis.com/c1.connector.v2.CapabilityPermissions",
+            "permissions": [
+              {
+                "permission": "vendors:read"
+              }
+            ]
+          },
+          {
+            "@type": "type.googleapis.com/c1.connector.v2.OptInRequired"
+          }
+        ]
+      },
+      "capabilities": [
+        "CAPABILITY_SYNC",
+        "CAPABILITY_TARGETED_SYNC"
+      ],
+      "permissions": {
+        "permissions": [
+          {
+            "permission": "vendors:read"
+          }
+        ]
+      },
+      "optInRequired": true
     }
   ],
   "connectorCapabilities": [
     "CAPABILITY_PROVISION",
     "CAPABILITY_SYNC",
     "CAPABILITY_ACCOUNT_PROVISIONING",
-    "CAPABILITY_ACTIONS"
+    "CAPABILITY_ACTIONS",
+    "CAPABILITY_TARGETED_SYNC",
+    "CAPABILITY_SERVICE_MODE_TARGETED_SYNC"
   ],
   "credentialDetails": {
     "capabilityAccountProvisioning": {

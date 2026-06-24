@@ -1,10 +1,13 @@
 package client
 
-import "encoding/json"
+import (
+	"bytes"
+	"encoding/json"
+)
 
 // vm_models.go: types used by the vendor-management surface
-// (agreements, audit-log feed, business). Kept separate from the
-// core users/vendors models so the diff is easy to audit.
+// (agreements and audit-log feed). Kept separate from the core users/vendors
+// models so the diff is easy to audit.
 
 // AgreementContractOwner is a Ramp user designated as a contract owner
 // on a vendor agreement. The id is a Ramp user ID and matches a row in
@@ -21,17 +24,17 @@ type AgreementContractOwner struct {
 // AgreementPayee is the vendor side of an agreement; carries the
 // business_vendor.uuid that joins back to /developer/v1/vendors.
 type AgreementPayee struct {
-	UUID            string `json:"uuid"`
-	Name            string `json:"name"`
-	DBAName         string `json:"dba_name"`
-	Website         string `json:"website"`
-	ImageURL        string `json:"image_url"`
-	BusinessVendor  *AgreementPayeeBusinessVendor `json:"business_vendor"`
+	UUID           string                        `json:"uuid"`
+	Name           string                        `json:"name"`
+	DBAName        string                        `json:"dba_name"`
+	Website        string                        `json:"website"`
+	ImageURL       string                        `json:"image_url"`
+	BusinessVendor *AgreementPayeeBusinessVendor `json:"business_vendor"`
 }
 
 type AgreementPayeeBusinessVendor struct {
-	UUID                            string `json:"uuid"`
-	VendorTrackingCategoryOptionID  int    `json:"vendor_tracking_category_option_id"`
+	UUID                           string `json:"uuid"`
+	VendorTrackingCategoryOptionID int    `json:"vendor_tracking_category_option_id"`
 }
 
 // AgreementDaysRemaining is Ramp's pre-computed countdown for the agreement.
@@ -49,27 +52,27 @@ type AgreementDaysRemaining struct {
 // superset of these fields plus a richer payee, available_actions, and
 // purchase_orders. We model only the fields we read.
 type VendorAgreementListItem struct {
-	ID                  string                  `json:"id"`
-	Name                string                  `json:"name"`
-	Description         string                  `json:"description"`
-	StartDate           string                  `json:"start_date"`
-	EndDate             string                  `json:"end_date"`
-	LastDateToTerminate string                  `json:"last_date_to_terminate"`
-	AutoRenewal         bool                    `json:"auto_renewal"`
-	RenewalStatus       string                  `json:"renewal_status"`
-	IsUpForRenewal      bool                    `json:"is_up_for_renewal"`
-	IsSnoozed           bool                    `json:"is_snoozed"`
-	NotificationsOn     bool                    `json:"notifications_on"`
-	Currency            string                  `json:"currency"`
-	TotalValue          *Money                  `json:"total_value"`
-	PayeeID             string                  `json:"payee_id"`
-	PayeeName           string                  `json:"payee_name"`
-	Logo                string                  `json:"logo"`
+	ID                  string                   `json:"id"`
+	Name                string                   `json:"name"`
+	Description         string                   `json:"description"`
+	StartDate           string                   `json:"start_date"`
+	EndDate             string                   `json:"end_date"`
+	LastDateToTerminate string                   `json:"last_date_to_terminate"`
+	AutoRenewal         bool                     `json:"auto_renewal"`
+	RenewalStatus       string                   `json:"renewal_status"`
+	IsUpForRenewal      bool                     `json:"is_up_for_renewal"`
+	IsSnoozed           bool                     `json:"is_snoozed"`
+	NotificationsOn     bool                     `json:"notifications_on"`
+	Currency            string                   `json:"currency"`
+	TotalValue          *Money                   `json:"total_value"`
+	PayeeID             string                   `json:"payee_id"`
+	PayeeName           string                   `json:"payee_name"`
+	Logo                string                   `json:"logo"`
 	ContractOwners      []AgreementContractOwner `json:"contract_owners"`
-	DaysRemaining       *AgreementDaysRemaining `json:"days_remaining"`
-	CreatedAt           string                  `json:"created_at"`
-	UpdatedAt           string                  `json:"updated_at"`
-	DeletedAt           string                  `json:"deleted_at"`
+	DaysRemaining       *AgreementDaysRemaining  `json:"days_remaining"`
+	CreatedAt           string                   `json:"created_at"`
+	UpdatedAt           string                   `json:"updated_at"`
+	DeletedAt           string                   `json:"deleted_at"`
 }
 
 // VendorAgreement is the single-fetch response from
@@ -80,33 +83,57 @@ type VendorAgreementListItem struct {
 // surface line items will need a follow-up that probes a real tenant
 // to nail down the shape.
 type VendorAgreement struct {
-	ID                  string                  `json:"id"`
-	Name                string                  `json:"name"`
-	Description         string                  `json:"description"`
-	StartDate           string                  `json:"start_date"`
-	EndDate             string                  `json:"end_date"`
-	LastDateToTerminate string                  `json:"last_date_to_terminate"`
-	AutoRenewal         bool                    `json:"auto_renewal"`
-	RenewalStatus       string                  `json:"renewal_status"`
-	IsActive            bool                    `json:"is_active"`
-	IsUpForRenewal      bool                    `json:"is_up_for_renewal"`
-	NotificationsOn     bool                    `json:"notifications_on"`
-	Currency            string                  `json:"currency"`
-	TotalValue          *Money                  `json:"total_value"`
+	ID                  string                   `json:"id"`
+	Name                string                   `json:"name"`
+	Description         string                   `json:"description"`
+	StartDate           string                   `json:"start_date"`
+	EndDate             string                   `json:"end_date"`
+	LastDateToTerminate string                   `json:"last_date_to_terminate"`
+	AutoRenewal         bool                     `json:"auto_renewal"`
+	RenewalStatus       string                   `json:"renewal_status"`
+	IsActive            bool                     `json:"is_active"`
+	IsUpForRenewal      bool                     `json:"is_up_for_renewal"`
+	NotificationsOn     bool                     `json:"notifications_on"`
+	Currency            string                   `json:"currency"`
+	TotalValue          *Money                   `json:"total_value"`
 	ContractOwners      []AgreementContractOwner `json:"contract_owners"`
-	Payee               *AgreementPayee         `json:"payee"`
-	DaysRemaining       *AgreementDaysRemaining `json:"days_remaining"`
-	LineItems           []map[string]any        `json:"line_items"`
-	CreatedAt           string                  `json:"created_at"`
-	UpdatedAt           string                  `json:"updated_at"`
-	ArchivedAt          string                  `json:"archived_at"`
-	DeletedAt           string                  `json:"deleted_at"`
+	Payee               *AgreementPayee          `json:"payee"`
+	DaysRemaining       *AgreementDaysRemaining  `json:"days_remaining"`
+	LineItems           []map[string]any         `json:"line_items"`
+	CreatedAt           string                   `json:"created_at"`
+	UpdatedAt           string                   `json:"updated_at"`
+	ArchivedAt          string                   `json:"archived_at"`
+	DeletedAt           string                   `json:"deleted_at"`
 }
 
 // VendorAgreementsList is the wire response for the list endpoint.
 type VendorAgreementsList struct {
 	Page Page                       `json:"page"`
 	Data []*VendorAgreementListItem `json:"data"`
+}
+
+func (l *VendorAgreementsList) UnmarshalJSON(data []byte) error {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil
+	}
+	if trimmed[0] == '[' {
+		var agreements []*VendorAgreementListItem
+		if err := json.Unmarshal(trimmed, &agreements); err != nil {
+			return err
+		}
+		l.Page = Page{}
+		l.Data = agreements
+		return nil
+	}
+
+	type vendorAgreementsList VendorAgreementsList
+	var out vendorAgreementsList
+	if err := json.Unmarshal(trimmed, &out); err != nil {
+		return err
+	}
+	*l = VendorAgreementsList(out)
+	return nil
 }
 
 // VendorAgreementsResponse is the connector-friendly list response.
@@ -125,27 +152,17 @@ type VendorAgreementsListRequest struct {
 	Start           string `json:"start,omitempty"`
 }
 
-// Business is the response from GET /developer/v1/business. We use
-// `id` as source_business_id on emitted traits.
-type Business struct {
-	ID                 string `json:"id"`
-	BusinessNameLegal  string `json:"business_name_legal"`
-	BusinessNameOnCard string `json:"business_name_on_card"`
-	Website            string `json:"website"`
-	Active             *bool  `json:"active"`
-}
-
 // AuditLogEvent is the per-event shape from
 // GET /developer/v1/audit-logs/events.
 type AuditLogEvent struct {
-	ID                string                  `json:"id"`
-	EventType         string                  `json:"event_type"`
-	EventTime         string                  `json:"event_time"`
-	ActorType         string                  `json:"actor_type"`
-	ActorID           string                  `json:"actor_id"`
-	AdditionalDetails string                  `json:"additional_details"`
-	PrimaryReference  *AuditLogReference      `json:"primary_reference"`
-	EventDetails      *AuditLogEventDetails   `json:"event_details"`
+	ID                string                `json:"id"`
+	EventType         string                `json:"event_type"`
+	EventTime         string                `json:"event_time"`
+	ActorType         string                `json:"actor_type"`
+	ActorID           string                `json:"actor_id"`
+	AdditionalDetails string                `json:"additional_details"`
+	PrimaryReference  *AuditLogReference    `json:"primary_reference"`
+	EventDetails      *AuditLogEventDetails `json:"event_details"`
 }
 
 type AuditLogReference struct {

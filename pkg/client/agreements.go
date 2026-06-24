@@ -13,7 +13,7 @@ const vendorAgreementsPath = "vendors/agreements"
 // ListVendorAgreements posts a search request to
 // POST /developer/v1/vendors/agreements and returns one page of results.
 //
-// Required scope: vendor_agreements:read.
+// Required scope: vendors:read.
 //
 // pagination is the opaque `page.next` cursor from a previous response, or
 // "" for the first page. When pagination is non-empty, it's used verbatim
@@ -50,7 +50,7 @@ func (c *Client) ListVendorAgreements(
 
 // GetVendorAgreement fetches a single agreement, including line items.
 //
-// Required scope: vendor_agreements:read.
+// Required scope: vendors:read.
 //
 // https://docs.ramp.com/developer-api/v1/api/vendor-agreements
 func (c *Client) GetVendorAgreement(

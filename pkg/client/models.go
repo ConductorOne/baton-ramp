@@ -1,5 +1,7 @@
 package client
 
+import "encoding/json"
+
 type Page struct {
 	Next string `json:"next"`
 }
@@ -42,8 +44,9 @@ type Money struct {
 }
 
 // MinorUnits converts the Ramp Money to int64 minor units, rounding to the
-// nearest unit. Returns nil when the Money has no currency_code (i.e. the
-// API omitted the field).
+// nearest unit. Returns 0 when the Money has no currency_code (i.e. the API
+// omitted the field), so callers that need to distinguish omitted from zero
+// should check CurrencyCode first.
 func (m *Money) MinorUnits() int64 {
 	if m == nil || m.CurrencyCode == "" {
 		return 0
@@ -62,28 +65,28 @@ func (m *Money) MinorUnits() int64 {
 }
 
 type Vendor struct {
-	ID                       string `json:"id"`
-	Name                     string `json:"name"`
-	NameLegal                string `json:"name_legal"`
-	IsActive                 bool   `json:"is_active"`
-	IsDeletable              bool   `json:"is_deletable"`
-	VendorOwnerID            string `json:"vendor_owner_id"`
-	ExternalVendorID         string `json:"external_vendor_id"`
-	DefaultEntityID          string `json:"default_entity_id"`
-	AccountingVendorRemoteID string `json:"accounting_vendor_remote_id"`
-	MerchantID               string `json:"merchant_id"`
-	Description              string `json:"description"`
-	VendorType               string `json:"vendor_type"`
-	BillingFrequency         string `json:"billing_frequency"`
-	Country                  string `json:"country"`
-	State                    string `json:"state"`
-	Subsidiary               []string `json:"subsidiary"`
-	Contacts                 []string `json:"contacts"`
-	CreatedAt                string `json:"created_at"`
-	TotalSpendAllTime        *Money `json:"total_spend_all_time"`
-	TotalSpendLast30Days     *Money `json:"total_spend_last_30_days"`
-	TotalSpendLast365Days    *Money `json:"total_spend_last_365_days"`
-	TotalSpendYTD            *Money `json:"total_spend_ytd"`
+	ID                       string            `json:"id"`
+	Name                     string            `json:"name"`
+	NameLegal                string            `json:"name_legal"`
+	IsActive                 bool              `json:"is_active"`
+	IsDeletable              bool              `json:"is_deletable"`
+	VendorOwnerID            string            `json:"vendor_owner_id"`
+	ExternalVendorID         string            `json:"external_vendor_id"`
+	DefaultEntityID          string            `json:"default_entity_id"`
+	AccountingVendorRemoteID string            `json:"accounting_vendor_remote_id"`
+	MerchantID               string            `json:"merchant_id"`
+	Description              string            `json:"description"`
+	VendorType               string            `json:"vendor_type"`
+	BillingFrequency         string            `json:"billing_frequency"`
+	Country                  string            `json:"country"`
+	State                    string            `json:"state"`
+	Subsidiary               []json.RawMessage `json:"subsidiary"`
+	Contacts                 []json.RawMessage `json:"contacts"`
+	CreatedAt                string            `json:"created_at"`
+	TotalSpendAllTime        *Money            `json:"total_spend_all_time"`
+	TotalSpendLast30Days     *Money            `json:"total_spend_last_30_days"`
+	TotalSpendLast365Days    *Money            `json:"total_spend_last_365_days"`
+	TotalSpendYTD            *Money            `json:"total_spend_ytd"`
 }
 
 type VendorsList struct {

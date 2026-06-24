@@ -3,6 +3,7 @@ package connector
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/conductorone/baton-ramp/pkg/client"
@@ -19,8 +20,9 @@ import (
 const contractOwnerEntitlement = "contract_owner"
 
 type vendorAgreementBuilder struct {
-	client     *client.Client
-	businessID func() string
+	client            *client.Client
+	agreementOwnersMu sync.RWMutex
+	agreementOwners   map[string][]client.AgreementContractOwner
 }
 
 func (b *vendorAgreementBuilder) ResourceType(ctx context.Context) *v2.ResourceType {
@@ -52,8 +54,17 @@ func (b *vendorAgreementBuilder) List(ctx context.Context, parentResourceID *v2.
 		return nil, "", annos, fmt.Errorf("baton-ramp: failed to list vendor agreements: %w", err)
 	}
 
+	b.agreementOwnersMu.Lock()
+	if pToken.Token == "" || b.agreementOwners == nil {
+		b.agreementOwners = make(map[string][]client.AgreementContractOwner)
+	}
+	b.agreementOwnersMu.Unlock()
+
 	rv := make([]*v2.Resource, 0, len(resp.Agreements))
 	for _, agreement := range resp.Agreements {
+		b.agreementOwnersMu.Lock()
+		b.agreementOwners[agreement.ID] = append([]client.AgreementContractOwner(nil), agreement.ContractOwners...)
+		b.agreementOwnersMu.Unlock()
 		resource, err := b.buildAgreementResource(agreement)
 		if err != nil {
 			return nil, "", annos, fmt.Errorf("baton-ramp: failed to build agreement resource %s: %w", agreement.ID, err)
@@ -61,6 +72,20 @@ func (b *vendorAgreementBuilder) List(ctx context.Context, parentResourceID *v2.
 		rv = append(rv, resource)
 	}
 	return rv, resp.Pagination, annos, nil
+}
+
+func (b *vendorAgreementBuilder) Get(ctx context.Context, resourceID *v2.ResourceId, _ *v2.ResourceId) (*v2.Resource, annotations.Annotations, error) {
+	var annos annotations.Annotations
+	agreement, ratelimitData, err := b.client.GetVendorAgreement(ctx, resourceID.GetResource())
+	annos.WithRateLimiting(ratelimitData)
+	if err != nil {
+		return nil, annos, fmt.Errorf("baton-ramp: failed to get agreement %s: %w", resourceID.GetResource(), err)
+	}
+	resource, err := b.buildAgreementResource(vendorAgreementListItemFromGet(agreement))
+	if err != nil {
+		return nil, annos, fmt.Errorf("baton-ramp: failed to build agreement resource %s: %w", agreement.ID, err)
+	}
+	return resource, annos, nil
 }
 
 // Entitlements declares the contract_owner entitlement, granted to Ramp
@@ -77,28 +102,27 @@ func (b *vendorAgreementBuilder) Entitlements(_ context.Context, resource *v2.Re
 	}, "", nil, nil
 }
 
-// Grants reads the agreement's contract_owners and emits one Grant per
-// owner. Requires a per-agreement GET because the list endpoint only
-// returns owner emails/ids inside the listing — we re-call to ensure we
-// see the full array even on agreements where the list response was
-// truncated.
-//
-// Note: the list response *does* include contract_owners, so this could
-// avoid the extra round-trip in the common case. We re-fetch to keep the
-// shape consistent across List / Grants and to read the richer single-
-// fetch payee data that becomes useful in v1.5+. The per-agreement
-// 1 req cost is bounded by the 50 req/min vendor-management surface
-// rate-limit budget.
+// Grants reads the agreement's contract_owners and emits one Grant per owner.
+// List caches owners from the agreement search response so full sync avoids a
+// per-agreement GET. If Grants is called without a prior List pass (for
+// targeted sync, tests, or unusual SDK flows), it falls back to GET.
 func (b *vendorAgreementBuilder) Grants(ctx context.Context, resource *v2.Resource, _ *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
 	var annos annotations.Annotations
-	agreement, ratelimitData, err := b.client.GetVendorAgreement(ctx, resource.Id.Resource)
-	annos.WithRateLimiting(ratelimitData)
-	if err != nil {
-		return nil, "", annos, fmt.Errorf("baton-ramp: failed to get agreement %s: %w", resource.Id.Resource, err)
+	agreementID := resource.Id.Resource
+	b.agreementOwnersMu.RLock()
+	owners, ok := b.agreementOwners[agreementID]
+	b.agreementOwnersMu.RUnlock()
+	if !ok {
+		agreement, ratelimitData, err := b.client.GetVendorAgreement(ctx, agreementID)
+		annos.WithRateLimiting(ratelimitData)
+		if err != nil {
+			return nil, "", annos, fmt.Errorf("baton-ramp: failed to get agreement %s: %w", agreementID, err)
+		}
+		owners = agreement.ContractOwners
 	}
 
-	grants := make([]*v2.Grant, 0, len(agreement.ContractOwners))
-	for _, owner := range agreement.ContractOwners {
+	grants := make([]*v2.Grant, 0, len(owners))
+	for _, owner := range owners {
 		if owner.ID == "" {
 			continue
 		}
@@ -117,7 +141,7 @@ func (b *vendorAgreementBuilder) Grants(ctx context.Context, resource *v2.Resour
 // attached. Trailing-window spend is NOT on the agreement; consumers
 // read it from the parent vendor's resource.
 func (b *vendorAgreementBuilder) buildAgreementResource(agreement *client.VendorAgreementListItem) (*v2.Resource, error) {
-	vendorTraitOption, err := buildAgreementVendorTraitOption(agreement, b.businessID)
+	vendorTraitOption, err := buildAgreementVendorTraitOption(agreement)
 	if err != nil {
 		return nil, fmt.Errorf("vendor trait: %w", err)
 	}
@@ -144,7 +168,7 @@ func (b *vendorAgreementBuilder) buildAgreementResource(agreement *client.Vendor
 // an agreement points at the agreement page in Ramp. The companion
 // VendorTrait emitted on the parent vendor resource (see vendors.go)
 // points at the vendor page.
-func buildAgreementVendorTraitOption(agreement *client.VendorAgreementListItem, businessIDFn func() string) (resourceSdk.ResourceOption, error) {
+func buildAgreementVendorTraitOption(agreement *client.VendorAgreementListItem) (resourceSdk.ResourceOption, error) {
 	vendorName := agreement.PayeeName
 	if vendorName == "" {
 		// PayeeName is required per spec, but be defensive: a missing name
@@ -154,13 +178,6 @@ func buildAgreementVendorTraitOption(agreement *client.VendorAgreementListItem, 
 	traitOpts := []resourceSdk.VendorTraitOption{
 		resourceSdk.WithVendorIdentity(agreement.PayeeID, vendorName, ""),
 		resourceSdk.WithVendorDeepLinkURL(agreementDeepLinkURL(agreement.ID)),
-	}
-	businessID := ""
-	if businessIDFn != nil {
-		businessID = businessIDFn()
-	}
-	if businessID != "" {
-		traitOpts = append(traitOpts, resourceSdk.WithVendorSourceScoping(businessID, ""))
 	}
 	return resourceSdk.WithVendorTrait(traitOpts...), nil
 }
@@ -271,6 +288,50 @@ func agreementDeepLinkURL(agreementID string) string {
 	return fmt.Sprintf("https://app.ramp.com/contracts/%s", agreementID)
 }
 
-func newVendorAgreementBuilder(c *client.Client, businessID func() string) *vendorAgreementBuilder {
-	return &vendorAgreementBuilder{client: c, businessID: businessID}
+func newVendorAgreementBuilder(c *client.Client) *vendorAgreementBuilder {
+	return &vendorAgreementBuilder{client: c}
+}
+
+func vendorAgreementListItemFromGet(agreement *client.VendorAgreement) *client.VendorAgreementListItem {
+	if agreement == nil {
+		return &client.VendorAgreementListItem{}
+	}
+
+	payeeID := ""
+	payeeName := ""
+	logo := ""
+	if agreement.Payee != nil {
+		payeeID = agreement.Payee.UUID
+		payeeName = agreement.Payee.Name
+		logo = agreement.Payee.ImageURL
+		if agreement.Payee.BusinessVendor != nil && agreement.Payee.BusinessVendor.UUID != "" {
+			payeeID = agreement.Payee.BusinessVendor.UUID
+		}
+		if payeeName == "" {
+			payeeName = agreement.Payee.DBAName
+		}
+	}
+
+	return &client.VendorAgreementListItem{
+		ID:                  agreement.ID,
+		Name:                agreement.Name,
+		Description:         agreement.Description,
+		StartDate:           agreement.StartDate,
+		EndDate:             agreement.EndDate,
+		LastDateToTerminate: agreement.LastDateToTerminate,
+		AutoRenewal:         agreement.AutoRenewal,
+		RenewalStatus:       agreement.RenewalStatus,
+		IsUpForRenewal:      agreement.IsUpForRenewal,
+		NotificationsOn:     agreement.NotificationsOn,
+		Currency:            agreement.Currency,
+		TotalValue:          agreement.TotalValue,
+		PayeeID:             payeeID,
+		PayeeName:           payeeName,
+		Logo:                logo,
+		ContractOwners:      agreement.ContractOwners,
+		DaysRemaining:       agreement.DaysRemaining,
+		CreatedAt:           agreement.CreatedAt,
+		UpdatedAt:           agreement.UpdatedAt,
+		DeletedAt:           agreement.DeletedAt,
+	}
 }

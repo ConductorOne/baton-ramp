@@ -33,23 +33,26 @@ var (
 		field.WithDefaultValue("https://api.ramp.com"),
 	)
 
-	// VendorManagement opts the connector into the vendor-management
-	// surface: vendor agreements, the audit-log incremental-sync feed,
-	// and the VendorTrait emitted on existing vendor resources. Default
-	// off; existing installs are unaffected. Requires the business:read
-	// and vendor_agreements:read OAuth scopes (added at runtime when this
-	// flag is true).
-	VendorManagement = field.BoolField("vendor-management",
-		field.WithDisplayName("Sync vendor management data"),
+	// Provisioning re-exports the SDK's default provisioning switch so OAuth
+	// client-credentials auth can request write scopes only when provisioning
+	// is enabled. The SDK still owns the runtime provisioning behavior.
+	Provisioning = field.BoolField("provisioning",
+		field.WithShortHand("p"),
+		field.WithDescription("This must be set in order for provisioning actions to be enabled"),
+		field.WithDefaultValue(false),
+		field.WithExportTarget(field.ExportTargetCLIOnly),
+	).ExportAs(field.ExportTargetCLIOnly)
+
+	AuditLogEvents = field.BoolField("audit-log-events",
+		field.WithDisplayName("Sync audit log events"),
 		field.WithDescription(
-			"Enable to sync vendor agreements (contracts), pre-aggregated spend, "+
-				"and audit-log change events from Ramp's vendor-management surface. "+
-				"Adds the business:read and vendor_agreements:read OAuth scopes. Default off.",
+			"Enable Ramp audit-log polling for incremental sync events. "+
+				"Adds the audit_logs:read OAuth scope. Default off.",
 		),
 		field.WithDefaultValue(false),
 	)
 
-	ConfigurationFields = []field.SchemaField{Token, RampClientID, RampClientSecret, RampBaseURL, VendorManagement}
+	ConfigurationFields = []field.SchemaField{Token, RampClientID, RampClientSecret, RampBaseURL, Provisioning, AuditLogEvents}
 
 	// Field groups gate which fields are validated per selected auth method.
 	// No top-level relationship constraints: FieldsMutuallyExclusive rejects
@@ -62,14 +65,14 @@ var (
 			Name:        AccessTokenGroup,
 			DisplayName: "Access Token",
 			HelpText:    "Authenticate using a Ramp API access token.",
-			Fields:      []field.SchemaField{Token, RampBaseURL, VendorManagement},
+			Fields:      []field.SchemaField{Token, RampBaseURL, AuditLogEvents},
 			Default:     true,
 		},
 		{
 			Name:        ClientCredentialsGroup,
 			DisplayName: "OAuth 2.0 Client Credentials",
 			HelpText:    "Authenticate using OAuth 2.0 client credentials issued by Ramp.",
-			Fields:      []field.SchemaField{RampClientID, RampClientSecret, RampBaseURL, VendorManagement},
+			Fields:      []field.SchemaField{RampClientID, RampClientSecret, RampBaseURL, AuditLogEvents},
 		},
 	}
 )

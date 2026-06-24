@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -76,5 +77,21 @@ func TestListVendorAgreementsUsesPostBodyForCursorPages(t *testing.T) {
 	}
 	if requests[1].path != "/developer/v1/vendors/agreements?start=cursor-1" {
 		t.Fatalf("cursor path = %s", requests[1].path)
+	}
+}
+
+func TestVendorAgreementsListUnmarshalBareArray(t *testing.T) {
+	var got VendorAgreementsList
+	if err := json.Unmarshal([]byte(`[{"id":"agreement-1","name":"MSA"}]`), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Data) != 1 {
+		t.Fatalf("agreements = %d, want 1", len(got.Data))
+	}
+	if got.Data[0].ID != "agreement-1" {
+		t.Fatalf("agreement id = %q, want agreement-1", got.Data[0].ID)
+	}
+	if got.Page.Next != "" {
+		t.Fatalf("page next = %q, want empty", got.Page.Next)
 	}
 }

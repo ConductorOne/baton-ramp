@@ -1,6 +1,7 @@
 package connector
 
 import (
+	"context"
 	"testing"
 
 	"github.com/conductorone/baton-ramp/pkg/client"
@@ -20,7 +21,7 @@ func TestVendorResourceIncludesVendorTrait(t *testing.T) {
 		Name: "Acme",
 	}
 
-	resource, err := vendorResource(vendor, false, nil)
+	resource, err := vendorResource(vendor)
 	if err != nil {
 		t.Fatalf("expected vendor resource, got error: %v", err)
 	}
@@ -35,12 +36,6 @@ func TestVendorResourceIncludesVendorTrait(t *testing.T) {
 	if trait.GetVendorName() != vendor.Name {
 		t.Fatalf("expected vendor name %q, got %q", vendor.Name, trait.GetVendorName())
 	}
-}
-
-// fixedBusinessID returns a function-typed source for a static business
-// id, matching the signature buildVendorTraitOption expects.
-func fixedBusinessID(s string) func() string {
-	return func() string { return s }
 }
 
 // TestBuildVendorTraitOption_FullPopulation walks every field on
@@ -59,7 +54,7 @@ func TestBuildVendorTraitOption_FullPopulation(t *testing.T) {
 		TotalSpendYTD:         &client.Money{Amount: 2000, CurrencyCode: "USD", MinorUnitConversionRate: 100},
 	}
 
-	opt, err := buildVendorTraitOption(vendor, fixedBusinessID("biz-1"))
+	opt, err := buildVendorTraitOption(vendor)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,8 +84,8 @@ func TestBuildVendorTraitOption_FullPopulation(t *testing.T) {
 	if got := trait.GetDeepLinkUrl(); got != "https://app.ramp.com/vendors/vendor-1" {
 		t.Fatalf("deep_link_url = %q", got)
 	}
-	if got := trait.GetSourceBusinessId(); got != "biz-1" {
-		t.Fatalf("source_business_id = %q", got)
+	if got := trait.GetSourceBusinessId(); got != "" {
+		t.Fatalf("source_business_id = %q, want empty", got)
 	}
 	if got := trait.GetSourceEntityId(); got != "entity-1" {
 		t.Fatalf("source_entity_id = %q", got)
@@ -117,7 +112,7 @@ func TestBuildVendorTraitOption_NoSpend(t *testing.T) {
 		NameLegal: "Acme Software, Inc.",
 	}
 
-	opt, err := buildVendorTraitOption(vendor, nil)
+	opt, err := buildVendorTraitOption(vendor)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +153,7 @@ func TestBuildVendorTraitOption_PartialSpend(t *testing.T) {
 		TotalSpendYTD: &client.Money{Amount: 0, CurrencyCode: ""}, // currency-empty: skipped
 	}
 
-	opt, err := buildVendorTraitOption(vendor, nil)
+	opt, err := buildVendorTraitOption(vendor)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,5 +178,46 @@ func TestBuildVendorTraitOption_PartialSpend(t *testing.T) {
 	}
 	if trait.GetYtdSpend() != nil {
 		t.Fatalf("expected nil YTD spend (currency_code empty), got %+v", trait.GetYtdSpend())
+	}
+}
+
+func TestVendorGrantsUsesCachedOwner(t *testing.T) {
+	ctx := context.Background()
+	builder := &vendorBuilder{
+		vendorOwners: map[string]string{"vendor-1": "user-1"},
+	}
+	resource, err := vendorResource(&client.Vendor{ID: "vendor-1", Name: "Acme"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	grants, _, _, err := builder.Grants(ctx, resource, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(grants) != 1 {
+		t.Fatalf("grants = %d, want 1", len(grants))
+	}
+	if got := grants[0].Principal.GetId().GetResource(); got != "user-1" {
+		t.Fatalf("principal = %q, want user-1", got)
+	}
+}
+
+func TestVendorGrantsUsesCachedEmptyOwner(t *testing.T) {
+	ctx := context.Background()
+	builder := &vendorBuilder{
+		vendorOwners: map[string]string{"vendor-1": ""},
+	}
+	resource, err := vendorResource(&client.Vendor{ID: "vendor-1", Name: "Acme"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	grants, _, _, err := builder.Grants(ctx, resource, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(grants) != 0 {
+		t.Fatalf("grants = %d, want 0", len(grants))
 	}
 }

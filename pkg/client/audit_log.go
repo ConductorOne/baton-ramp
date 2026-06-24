@@ -22,8 +22,7 @@ const auditLogEventsPath = "audit-logs/events"
 // pagination is the opaque `page.next` cursor from a previous response, or
 // "" for the first page.
 //
-// Required scope: business:read (audit-log access is granted by the
-// business:read scope; documented as part of the read-only surface).
+// Required scope: audit_logs:read.
 //
 // https://docs.ramp.com/developer-api/v1/api/audit-logs
 func (c *Client) ListAuditLogEvents(

@@ -56,6 +56,7 @@ var vendorAgreementResourceType = &v2.ResourceType{
 		v2.ResourceType_TRAIT_VENDOR_AGREEMENT,
 	},
 	Annotations: annotations.New(
-		capabilityPermissions("vendor_agreements:read"),
+		capabilityPermissions("vendors:read"),
+		&v2.OptInRequired{},
 	),
 }

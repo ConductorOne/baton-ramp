@@ -22,6 +22,10 @@ const (
 	// eventTypeAgreementStatusChanged is the Ramp audit event type emitted when
 	// an agreement's status changes. Spelled exactly per the Ramp spec.
 	eventTypeAgreementStatusChanged = "Vendor management agreement status changed"
+
+	// eventTypeVendorAddedToManagedList is spelled exactly per the Ramp spec,
+	// including the literal double space after "management".
+	eventTypeVendorAddedToManagedList = "Vendor management  vendor added to managed list"
 )
 
 // auditEventFeed implements connectorbuilder.EventFeed against Ramp's
@@ -36,11 +40,15 @@ const (
 // the platform side; this connector just has to translate audit
 // entries into v2.Events.
 type auditEventFeed struct {
-	client *client.Client
+	client                  *client.Client
+	vendorAgreementsEnabled bool
 }
 
-func newAuditEventFeed(c *client.Client) *auditEventFeed {
-	return &auditEventFeed{client: c}
+func newAuditEventFeed(c *client.Client, vendorAgreementsEnabled bool) *auditEventFeed {
+	return &auditEventFeed{
+		client:                  c,
+		vendorAgreementsEnabled: vendorAgreementsEnabled,
+	}
 }
 
 // EventFeedID is the stable feed identifier the platform uses to
@@ -126,12 +134,25 @@ func (f *auditEventFeed) ListEvents(
 
 	events := make([]*v2.Event, 0, len(auditEvents))
 	maxEventTime := cursor.LastEventTime
+	pageHasParsedEvents := false
+	pageDescending := true
+	pageAllAtOrBeforeFloor := !floor.IsZero()
+	var previousEventTime time.Time
 
 	for _, ae := range auditEvents {
 		eventTime, err := time.Parse(time.RFC3339, ae.EventTime)
 		if err != nil {
 			// Skip unparseable timestamps rather than fail the whole batch.
+			pageAllAtOrBeforeFloor = false
 			continue
+		}
+		if pageHasParsedEvents && eventTime.After(previousEventTime) {
+			pageDescending = false
+		}
+		pageHasParsedEvents = true
+		previousEventTime = eventTime
+		if floor.IsZero() || eventTime.After(floor) {
+			pageAllAtOrBeforeFloor = false
 		}
 		if eventTime.After(maxEventTime) {
 			maxEventTime = eventTime
@@ -151,14 +172,22 @@ func (f *auditEventFeed) ListEvents(
 		events = append(events, ev)
 	}
 
+	effectiveNextPageToken := nextPageToken
+	if nextPageToken != "" && pageHasParsedEvents && pageDescending && pageAllAtOrBeforeFloor {
+		// Ramp audit pages are commonly newest-first. Once a descending page
+		// is entirely at or before the floor, later cursor pages are older and
+		// cannot produce new ResourceChangeEvents for this poll.
+		effectiveNextPageToken = ""
+	}
+
 	state := &pagination.StreamState{
-		HasMore: nextPageToken != "",
+		HasMore: effectiveNextPageToken != "",
 	}
 	nextCursor := &eventPageToken{
-		NextPageToken: nextPageToken,
+		NextPageToken: effectiveNextPageToken,
 		LastEventTime: maxEventTime,
 	}
-	if nextPageToken != "" {
+	if effectiveNextPageToken != "" {
 		nextCursor.FloorEventTime = floor
 	}
 	state.Cursor, err = encodeEventPageToken(nextCursor)
@@ -179,7 +208,7 @@ func (f *auditEventFeed) ListEvents(
 // identifier.
 var vendorManagementEventTypes = map[string]struct{}{
 	// Vendor lifecycle.
-	"Vendor management  vendor added to managed list":     {},
+	eventTypeVendorAddedToManagedList:                     {},
 	"Vendor management  vendor removed from managed list": {},
 	"Draft vendor created":                                {},
 	"Draft vendor published":                              {},
@@ -240,6 +269,9 @@ func shouldSkipAuditEvent(ae *client.AuditLogEvent) bool {
 func (f *auditEventFeed) toResourceChangeEvent(ae *client.AuditLogEvent, eventTime time.Time) *v2.Event {
 	resourceType := "vendor"
 	if isAgreementURL(ae.PrimaryReference.URL) {
+		if !f.vendorAgreementsEnabled {
+			return nil
+		}
 		resourceType = "vendor_agreement"
 	}
 	return v2.Event_builder{
