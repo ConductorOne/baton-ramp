@@ -12,6 +12,8 @@ import (
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
+	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -144,6 +146,12 @@ func (f *auditEventFeed) ListEvents(
 		eventTime, err := time.Parse(time.RFC3339, ae.EventTime)
 		if err != nil {
 			// Skip unparseable timestamps rather than fail the whole batch.
+			ctxzap.Extract(ctx).Debug(
+				"skipping audit event with unparseable event_time",
+				zap.String("audit_event_id", ae.ID),
+				zap.String("event_time", ae.EventTime),
+				zap.Error(err),
+			)
 			pageAllAtOrBeforeFloor = false
 			continue
 		}
