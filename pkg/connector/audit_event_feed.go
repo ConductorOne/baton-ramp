@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -69,12 +70,16 @@ func (f *auditEventFeed) EventFeedMetadata(ctx context.Context) *v2.EventFeedMet
 
 // eventPageToken is what we marshal into the StreamToken cursor between
 // polls. NextPageToken is Ramp's opaque page.next; LastEventTime is the
-// max event_time we've seen. FloorEventTime is fixed at the start of a
-// paginated stream so descending pages don't get filtered by page 1's max.
+// max event_time we've seen and LastEventIDs are the event IDs observed at
+// that exact timestamp. FloorEventTime/FloorEventIDs are fixed at the start
+// of a paginated stream so descending pages don't get filtered by page 1's
+// max.
 type eventPageToken struct {
 	NextPageToken  string    `json:"next_page_token,omitempty"`
 	LastEventTime  time.Time `json:"last_event_time,omitempty"`
+	LastEventIDs   []string  `json:"last_event_ids,omitempty"`
 	FloorEventTime time.Time `json:"floor_event_time,omitempty"`
+	FloorEventIDs  []string  `json:"floor_event_ids,omitempty"`
 }
 
 func decodeEventPageToken(s string) (*eventPageToken, error) {
@@ -99,6 +104,36 @@ func encodeEventPageToken(t *eventPageToken) (string, error) {
 	return string(b), nil
 }
 
+func eventIDSet(ids []string) map[string]struct{} {
+	out := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		if id == "" {
+			continue
+		}
+		out[id] = struct{}{}
+	}
+	return out
+}
+
+func addEventID(set map[string]struct{}, id string) {
+	if id == "" {
+		return
+	}
+	set[id] = struct{}{}
+}
+
+func sortedEventIDs(set map[string]struct{}) []string {
+	if len(set) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(set))
+	for id := range set {
+		out = append(out, id)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // ListEvents fetches one page of audit events from Ramp, filters to the
 // vendor-management subset, and returns ResourceChangeEvents for each.
 func (f *auditEventFeed) ListEvents(
@@ -121,12 +156,15 @@ func (f *auditEventFeed) ListEvents(
 	if earliestEvent != nil {
 		floor = earliestEvent.AsTime()
 	}
+	floorEventIDs := eventIDSet(cursor.LastEventIDs)
 	if cursor.NextPageToken != "" {
 		if !cursor.FloorEventTime.IsZero() {
 			floor = cursor.FloorEventTime
+			floorEventIDs = eventIDSet(cursor.FloorEventIDs)
 		}
 	} else if cursor.LastEventTime.After(floor) {
 		floor = cursor.LastEventTime
+		floorEventIDs = eventIDSet(cursor.LastEventIDs)
 	}
 
 	auditEvents, nextPageToken, ratelimitData, err := f.client.ListAuditLogEvents(ctx, cursor.NextPageToken)
@@ -137,6 +175,7 @@ func (f *auditEventFeed) ListEvents(
 
 	events := make([]*v2.Event, 0, len(auditEvents))
 	maxEventTime := cursor.LastEventTime
+	maxEventIDs := eventIDSet(cursor.LastEventIDs)
 	pageHasParsedEvents := false
 	pageDescending := true
 	pageAllAtOrBeforeFloor := !floor.IsZero()
@@ -160,16 +199,34 @@ func (f *auditEventFeed) ListEvents(
 		}
 		pageHasParsedEvents = true
 		previousEventTime = eventTime
-		if floor.IsZero() || eventTime.After(floor) {
+
+		equalFloorUnseen := !floor.IsZero() && eventTime.Equal(floor) && ae.ID != ""
+		if equalFloorUnseen {
+			_, equalFloorUnseen = floorEventIDs[ae.ID]
+			equalFloorUnseen = !equalFloorUnseen
+		}
+		if floor.IsZero() || eventTime.After(floor) || equalFloorUnseen {
 			pageAllAtOrBeforeFloor = false
 		}
 		if eventTime.After(maxEventTime) {
 			maxEventTime = eventTime
+			maxEventIDs = make(map[string]struct{})
+			addEventID(maxEventIDs, ae.ID)
+		} else if eventTime.Equal(maxEventTime) {
+			addEventID(maxEventIDs, ae.ID)
 		}
-		if !floor.IsZero() && !eventTime.After(floor) {
+		if !floor.IsZero() && eventTime.Before(floor) {
 			// Already seen in a prior poll; defensive against out-of-
 			// order delivery.
 			continue
+		}
+		if !floor.IsZero() && eventTime.Equal(floor) {
+			if ae.ID == "" {
+				continue
+			}
+			if _, seen := floorEventIDs[ae.ID]; seen {
+				continue
+			}
 		}
 		if shouldSkipAuditEvent(ae) {
 			continue
@@ -195,9 +252,11 @@ func (f *auditEventFeed) ListEvents(
 	nextCursor := &eventPageToken{
 		NextPageToken: effectiveNextPageToken,
 		LastEventTime: maxEventTime,
+		LastEventIDs:  sortedEventIDs(maxEventIDs),
 	}
 	if effectiveNextPageToken != "" {
 		nextCursor.FloorEventTime = floor
+		nextCursor.FloorEventIDs = sortedEventIDs(floorEventIDs)
 	}
 	state.Cursor, err = encodeEventPageToken(nextCursor)
 	if err != nil {

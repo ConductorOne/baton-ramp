@@ -341,6 +341,65 @@ func TestAuditEventFeedStopsDescendingPaginationAtFloor(t *testing.T) {
 	}
 }
 
+func TestAuditEventFeedEmitsUnseenEventAtHighWaterTimestamp(t *testing.T) {
+	ctx := context.Background()
+	eventTime := time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprintf(
+			w,
+			`{"data":[`+
+				`{"id":"event-seen","event_type":%q,"event_time":%q,"primary_reference":{"id":"vendor-seen","resource_name":%q,"url":"/vendors/vendor-seen"}},`+
+				`{"id":"event-new","event_type":%q,"event_time":%q,"primary_reference":{"id":"vendor-new","resource_name":%q,"url":"/vendors/vendor-new"}}`+
+				`],"page":{"next":""}}`,
+			eventTypeVendorAddedToManagedList,
+			eventTime.Format(time.RFC3339),
+			resourceNameVendorMerchant,
+			eventTypeVendorAddedToManagedList,
+			eventTime.Format(time.RFC3339),
+			resourceNameVendorMerchant,
+		)
+	}))
+	defer server.Close()
+
+	c, err := client.New(ctx, client.Token{AccessToken: "token"}, server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	feed := newAuditEventFeed(c, true)
+
+	cursor, err := encodeEventPageToken(&eventPageToken{
+		LastEventTime: eventTime,
+		LastEventIDs:  []string{"event-seen"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	events, state, _, err := feed.ListEvents(
+		ctx,
+		timestamppb.New(eventTime.Add(-time.Hour)),
+		&pagination.StreamToken{Cursor: cursor},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 1 || events[0].GetId() != "event-new" {
+		t.Fatalf("expected only unseen equal-timestamp event, got %+v", events)
+	}
+	nextCursor, err := decodeEventPageToken(state.Cursor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !nextCursor.LastEventTime.Equal(eventTime) {
+		t.Fatalf("expected high-water timestamp %s, got %s", eventTime, nextCursor.LastEventTime)
+	}
+	if !stringSlicesEqual(nextCursor.LastEventIDs, []string{"event-new", "event-seen"}) {
+		t.Fatalf("expected high-water event IDs to include seen and new events, got %+v", nextCursor.LastEventIDs)
+	}
+}
+
 func TestAuditEventFeedSkipsAgreementEventsWhenAgreementsDisabled(t *testing.T) {
 	eventTime := time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC)
 	agreementEvent := &client.AuditLogEvent{
@@ -369,6 +428,18 @@ func TestAuditEventFeedSkipsAgreementEventsWhenAgreementsDisabled(t *testing.T) 
 	if got := feed.toResourceChangeEvent(vendorEvent, eventTime); got == nil {
 		t.Fatal("expected vendor event to be emitted")
 	}
+}
+
+func stringSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func auditEventListResponse(eventID string, eventTime time.Time, referenceID string, referenceURL string, next string) string {
