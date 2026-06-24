@@ -15,10 +15,12 @@ func capabilityPermissions(perms ...string) *v2.CapabilityPermissions {
 
 // Ramp OAuth scopes reference: https://docs.ramp.com/developer-api/v1/authorization
 
+const userResourceTypeDisplayName = "User"
+
 // The user resource type is for all user objects from the database.
 var userResourceType = &v2.ResourceType{
 	Id:          "user",
-	DisplayName: roleNameUser,
+	DisplayName: userResourceTypeDisplayName,
 	Traits:      []v2.ResourceType_Trait{v2.ResourceType_TRAIT_USER},
 	Annotations: annotations.New(
 		capabilityPermissions("users:read", "users:write"),
