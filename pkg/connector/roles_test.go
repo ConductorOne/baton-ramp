@@ -4,17 +4,17 @@ import "testing"
 
 func TestRolesMatchRampReadEnum(t *testing.T) {
 	expected := map[string]string{
-		"AUDITOR":              "Auditor",
-		"BUSINESS_ADMIN":       "Admin",
-		"BUSINESS_BOOKKEEPER":  "Bookkeeper",
-		"BUSINESS_OWNER":       "Owner",
-		"BUSINESS_USER":        "User",
-		"GUEST_USER":           "Guest",
-		"IT_ADMIN":             "IT Admin",
-		"UNBUNDLED_ADMIN":      "Unbundled Admin",
-		"UNBUNDLED_BOOKKEEPER": "Unbundled Bookkeeper",
-		"UNBUNDLED_OWNER":      "Unbundled Owner",
-		"UNBUNDLED_USER":       "Unbundled User",
+		roleIDAuditor:             roleNameAuditor,
+		roleIDBusinessAdmin:       roleNameAdmin,
+		roleIDBusinessBookkeeper:  roleNameBookkeeper,
+		roleIDBusinessOwner:       roleNameOwner,
+		roleIDBusinessUser:        roleNameUser,
+		roleIDGuestUser:           roleNameGuest,
+		roleIDITAdmin:             roleNameITAdmin,
+		roleIDUnbundledAdmin:      roleNameUnbundledAdmin,
+		roleIDUnbundledBookkeeper: roleNameUnbundledBookkeeper,
+		roleIDUnbundledOwner:      roleNameUnbundledOwner,
+		roleIDUnbundledUser:       roleNameUnbundledUser,
 	}
 
 	if len(roles) != len(expected) {
@@ -39,13 +39,13 @@ func TestRolesMatchRampReadEnum(t *testing.T) {
 
 func TestValidCreateRolesMatchRampCreateEnum(t *testing.T) {
 	expected := map[string]bool{
-		"AUDITOR":             true,
-		"BUSINESS_ADMIN":      true,
-		"BUSINESS_BOOKKEEPER": true,
-		"BUSINESS_OWNER":      true,
-		"BUSINESS_USER":       true,
-		"GUEST_USER":          true,
-		"IT_ADMIN":            true,
+		roleIDAuditor:            true,
+		roleIDBusinessAdmin:      true,
+		roleIDBusinessBookkeeper: true,
+		roleIDBusinessOwner:      true,
+		roleIDBusinessUser:       true,
+		roleIDGuestUser:          true,
+		roleIDITAdmin:            true,
 	}
 
 	if len(validCreateRoles) != len(expected) {

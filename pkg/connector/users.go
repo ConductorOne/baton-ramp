@@ -19,13 +19,13 @@ import (
 // validCreateRoles is the set of roles the Ramp API accepts when creating a user via the deferred endpoint.
 // The read enum includes additional UNBUNDLED_* roles that are not accepted by create or update.
 var validCreateRoles = map[string]bool{
-	"AUDITOR":             true,
-	"BUSINESS_ADMIN":      true,
-	"BUSINESS_BOOKKEEPER": true,
-	"BUSINESS_OWNER":      true,
-	"BUSINESS_USER":       true,
-	"GUEST_USER":          true,
-	"IT_ADMIN":            true,
+	roleIDAuditor:            true,
+	roleIDBusinessAdmin:      true,
+	roleIDBusinessBookkeeper: true,
+	roleIDBusinessOwner:      true,
+	roleIDBusinessUser:       true,
+	roleIDGuestUser:          true,
+	roleIDITAdmin:            true,
 }
 
 type userBuilder struct {

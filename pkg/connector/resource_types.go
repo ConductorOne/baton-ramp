@@ -18,7 +18,7 @@ func capabilityPermissions(perms ...string) *v2.CapabilityPermissions {
 // The user resource type is for all user objects from the database.
 var userResourceType = &v2.ResourceType{
 	Id:          "user",
-	DisplayName: "User",
+	DisplayName: roleNameUser,
 	Traits:      []v2.ResourceType_Trait{v2.ResourceType_TRAIT_USER},
 	Annotations: annotations.New(
 		capabilityPermissions("users:read", "users:write"),
