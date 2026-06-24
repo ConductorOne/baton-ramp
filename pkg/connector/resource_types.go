@@ -39,6 +39,7 @@ var roleResourceType = &v2.ResourceType{
 var vendorResourceType = &v2.ResourceType{
 	Id:          "vendor",
 	DisplayName: "Vendor",
+	Traits:      []v2.ResourceType_Trait{v2.ResourceType_TRAIT_VENDOR},
 	Annotations: annotations.New(
 		capabilityPermissions("vendors:read", "vendors:write"),
 	),
