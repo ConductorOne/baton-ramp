@@ -5,12 +5,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 )
 
-const auditLogEventsPath = "audit-logs/events"
+const (
+	auditLogEventsPath            = "audit-logs/events"
+	defaultAuditLogEventsPageSize = 100
+)
+
+type AuditLogEventsRequest struct {
+	PageSize int
+}
 
 // ListAuditLogEvents fetches one page of audit-log events from
 // GET /developer/v1/audit-logs/events.
@@ -28,6 +37,7 @@ const auditLogEventsPath = "audit-logs/events"
 // https://docs.ramp.com/developer-api/v1/api/audit-logs
 func (c *Client) ListAuditLogEvents(
 	ctx context.Context,
+	req *AuditLogEventsRequest,
 	pagination string,
 ) ([]*AuditLogEvent, string, *v2.RateLimitDescription, error) {
 	reqURL := pagination
@@ -37,6 +47,10 @@ func (c *Client) ListAuditLogEvents(
 		if err != nil {
 			return nil, "", nil, err
 		}
+	}
+	reqURL, err := addAuditLogEventsListParams(reqURL, req)
+	if err != nil {
+		return nil, "", nil, err
 	}
 	resp := &AuditLogEventsList{}
 	ratelimitData, err := c.query(ctx, http.MethodGet, reqURL, resp)
@@ -49,6 +63,26 @@ func (c *Client) ListAuditLogEvents(
 		return nil, "", ratelimitData, err
 	}
 	return events, resp.Page.Next, ratelimitData, nil
+}
+
+func addAuditLogEventsListParams(reqURL string, req *AuditLogEventsRequest) (string, error) {
+	if req == nil {
+		req = &AuditLogEventsRequest{}
+	}
+	parsedURL, err := url.Parse(reqURL)
+	if err != nil {
+		return "", fmt.Errorf("baton-ramp: failed to parse audit log events URL: %w", err)
+	}
+	pageSize := req.PageSize
+	if pageSize <= 0 {
+		pageSize = defaultAuditLogEventsPageSize
+	}
+	query := parsedURL.Query()
+	if query.Get("page_size") == "" {
+		query.Set("page_size", strconv.Itoa(pageSize))
+	}
+	parsedURL.RawQuery = query.Encode()
+	return parsedURL.String(), nil
 }
 
 // flattenAuditEvents tolerates both the spec-documented `data: T[][]` shape

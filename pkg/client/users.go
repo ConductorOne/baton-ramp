@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/google/uuid"
@@ -12,6 +14,7 @@ import (
 const (
 	usersEndpoint         = "users"
 	usersDeferredEndpoint = "users/deferred"
+	defaultUsersPageSize  = 100
 )
 
 type CreateUserRequest struct {
@@ -23,11 +26,29 @@ type CreateUserRequest struct {
 }
 
 func (c *Client) ListUsers(ctx context.Context, pagination string) (*UsersResponse, *v2.RateLimitDescription, error) {
+	return c.listUsers(ctx, pagination, "")
+}
+
+func (c *Client) ListUsersByRole(ctx context.Context, role string, pagination string) (*UsersResponse, *v2.RateLimitDescription, error) {
+	return c.listUsers(ctx, pagination, role)
+}
+
+func (c *Client) listUsers(ctx context.Context, pagination string, role string) (*UsersResponse, *v2.RateLimitDescription, error) {
 	users := &UsersList{}
 	reqURL := pagination
 	if reqURL == "" {
 		var err error
 		reqURL, err = c.newUnPaginatedURL(usersEndpoint)
+		if err != nil {
+			return nil, nil, err
+		}
+		reqURL, err = addUsersListParams(reqURL, role)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		var err error
+		reqURL, err = addUsersListParams(reqURL, role)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -42,6 +63,22 @@ func (c *Client) ListUsers(ctx context.Context, pagination string) (*UsersRespon
 		Pagination: users.Page.Next,
 	}
 	return rv, ratelimitData, nil
+}
+
+func addUsersListParams(reqURL string, role string) (string, error) {
+	parsedURL, err := url.Parse(reqURL)
+	if err != nil {
+		return "", fmt.Errorf("ramp-client: failed to parse users URL: %w", err)
+	}
+	query := parsedURL.Query()
+	if query.Get("page_size") == "" {
+		query.Set("page_size", strconv.Itoa(defaultUsersPageSize))
+	}
+	if role != "" {
+		query.Set("role", role)
+	}
+	parsedURL.RawQuery = query.Encode()
+	return parsedURL.String(), nil
 }
 
 // POST https://api.ramp.com/developer/v1/users/deferred
@@ -89,4 +126,3 @@ func (c *Client) ReactivateUser(ctx context.Context, userID string) (*v2.RateLim
 	}
 	return ratelimitData, nil
 }
-

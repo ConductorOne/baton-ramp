@@ -3,6 +3,7 @@ package connector
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/conductorone/baton-ramp/pkg/client"
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
@@ -65,12 +66,30 @@ func (o *userBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId,
 	annos.WithRateLimiting(ratelimitData)
 
 	rv := make([]*v2.Resource, 0, len(usersResponse.Users))
+	unknownRoles := map[string]struct{}{}
+	unknownRoleUserCount := 0
 	for _, u := range usersResponse.Users {
+		if !isKnownRampRole(u.Role) {
+			unknownRoleUserCount++
+			unknownRoles[normalizeRampRole(u.Role)] = struct{}{}
+		}
 		resource, err := userResource(u)
 		if err != nil {
 			return nil, "", annos, fmt.Errorf("baton-ramp: failed to create resource for user %s: %w", u.ID, err)
 		}
 		rv = append(rv, resource)
+	}
+	if len(unknownRoles) > 0 {
+		roles := make([]string, 0, len(unknownRoles))
+		for role := range unknownRoles {
+			roles = append(roles, role)
+		}
+		sort.Strings(roles)
+		ctxzap.Extract(ctx).Warn(
+			"ramp-connector: users have unknown roles",
+			zap.Strings("roles", roles),
+			zap.Int("user_count", unknownRoleUserCount),
+		)
 	}
 
 	return rv, usersResponse.Pagination, annos, nil
