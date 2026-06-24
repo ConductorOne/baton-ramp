@@ -18,36 +18,78 @@ type roleBuilder struct {
 	client *client.Client
 }
 
-// roles is the complete set of role values returned by the Ramp API.
+const (
+	roleIDAuditor             = "AUDITOR"
+	roleIDBusinessAdmin       = "BUSINESS_ADMIN"
+	roleIDBusinessBookkeeper  = "BUSINESS_BOOKKEEPER"
+	roleIDBusinessOwner       = "BUSINESS_OWNER"
+	roleIDBusinessUser        = "BUSINESS_USER"
+	roleIDGuestUser           = "GUEST_USER"
+	roleIDITAdmin             = "IT_ADMIN"
+	roleIDUnbundledAdmin      = "UNBUNDLED_ADMIN"
+	roleIDUnbundledBookkeeper = "UNBUNDLED_BOOKKEEPER"
+	roleIDUnbundledOwner      = "UNBUNDLED_OWNER"
+	roleIDUnbundledUser       = "UNBUNDLED_USER"
+
+	roleNameAdmin               = "Admin"
+	roleNameAuditor             = "Auditor"
+	roleNameBookkeeper          = "Bookkeeper"
+	roleNameGuest               = "Guest"
+	roleNameITAdmin             = "IT Admin"
+	roleNameOwner               = "Owner"
+	roleNameUnbundledAdmin      = "Unbundled Admin"
+	roleNameUnbundledBookkeeper = "Unbundled Bookkeeper"
+	roleNameUnbundledOwner      = "Unbundled Owner"
+	roleNameUnbundledUser       = "Unbundled User"
+	roleNameUser                = "User"
+)
+
+// roles is the complete set of role values returned by GET /developer/v1/users.
 // See https://docs.ramp.com/developer-api/v1/api/users for the role enum.
 var roles = []client.Role{
 	{
-		ID:   "BUSINESS_ADMIN",
-		Name: "Admin",
+		ID:   roleIDBusinessAdmin,
+		Name: roleNameAdmin,
 	},
 	{
-		ID:   "BUSINESS_USER",
-		Name: "User",
+		ID:   roleIDBusinessUser,
+		Name: roleNameUser,
 	},
 	{
-		ID:   "BUSINESS_OWNER",
-		Name: "Owner",
+		ID:   roleIDBusinessOwner,
+		Name: roleNameOwner,
 	},
 	{
-		ID:   "BUSINESS_BOOKKEEPER",
-		Name: "Bookkeeper",
+		ID:   roleIDBusinessBookkeeper,
+		Name: roleNameBookkeeper,
 	},
 	{
-		ID:   "IT_ADMIN",
-		Name: "IT Admin",
+		ID:   roleIDITAdmin,
+		Name: roleNameITAdmin,
 	},
 	{
-		ID:   "AUDITOR",
-		Name: "Auditor",
+		ID:   roleIDAuditor,
+		Name: roleNameAuditor,
 	},
 	{
-		ID:   "GUEST_USER",
-		Name: "Guest",
+		ID:   roleIDGuestUser,
+		Name: roleNameGuest,
+	},
+	{
+		ID:   roleIDUnbundledAdmin,
+		Name: roleNameUnbundledAdmin,
+	},
+	{
+		ID:   roleIDUnbundledBookkeeper,
+		Name: roleNameUnbundledBookkeeper,
+	},
+	{
+		ID:   roleIDUnbundledOwner,
+		Name: roleNameUnbundledOwner,
+	},
+	{
+		ID:   roleIDUnbundledUser,
+		Name: roleNameUnbundledUser,
 	},
 }
 

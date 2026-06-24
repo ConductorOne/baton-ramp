@@ -70,6 +70,9 @@
       "resourceType": {
         "id": "vendor",
         "displayName": "Vendor",
+        "traits": [
+          "TRAIT_VENDOR"
+        ],
         "annotations": [
           {
             "@type": "type.googleapis.com/c1.connector.v2.CapabilityPermissions",

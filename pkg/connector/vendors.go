@@ -33,11 +33,7 @@ func (o *vendorBuilder) List(ctx context.Context, parentResourceID *v2.ResourceI
 
 	rv := make([]*v2.Resource, 0, len(resp.Vendors))
 	for _, vendor := range resp.Vendors {
-		resource, err := resourceSdk.NewResource(
-			vendor.Name,
-			vendorResourceType,
-			vendor.ID,
-		)
+		resource, err := vendorResource(vendor)
 		if err != nil {
 			return nil, "", annos, fmt.Errorf("baton-ramp: failed to create vendor resource %s: %w", vendor.ID, err)
 		}
@@ -132,4 +128,13 @@ func (o *vendorBuilder) Revoke(ctx context.Context, g *v2.Grant) (annotations.An
 
 func newVendorBuilder(client *client.Client) *vendorBuilder {
 	return &vendorBuilder{client: client}
+}
+
+func vendorResource(vendor *client.Vendor) (*v2.Resource, error) {
+	return resourceSdk.NewResource(
+		vendor.Name,
+		vendorResourceType,
+		vendor.ID,
+		resourceSdk.WithVendorTrait(resourceSdk.WithVendorIdentity(vendor.ID, vendor.Name, "")),
+	)
 }

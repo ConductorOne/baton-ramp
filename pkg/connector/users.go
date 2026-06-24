@@ -17,16 +17,14 @@ import (
 )
 
 // validCreateRoles is the set of roles the Ramp API accepts when creating a user via the deferred endpoint.
-// This differs from the roles returned during sync (roles.go): AUDITOR and GUEST_USER are accepted at
-// creation but not returned as assignable roles in the listing, so both sets must be maintained separately.
+// The read enum includes additional UNBUNDLED_* roles that are not accepted by create or update.
 var validCreateRoles = map[string]bool{
-	"AUDITOR":             true,
-	"BUSINESS_ADMIN":      true,
-	"BUSINESS_BOOKKEEPER": true,
-	"BUSINESS_OWNER":      true,
-	"BUSINESS_USER":       true,
-	"GUEST_USER":          true,
-	"IT_ADMIN":            true,
+	roleIDAuditor:            true,
+	roleIDBusinessAdmin:      true,
+	roleIDBusinessBookkeeper: true,
+	roleIDBusinessUser:       true,
+	roleIDGuestUser:          true,
+	roleIDITAdmin:            true,
 }
 
 type userBuilder struct {
@@ -131,7 +129,7 @@ func (o *userBuilder) CreateAccount(
 	role := roleVal.GetStringValue()
 	if !validCreateRoles[role] {
 		return nil, nil, nil, grpcstatus.Errorf(codes.InvalidArgument,
-			"ramp-connector: invalid role %q, must be one of AUDITOR, BUSINESS_ADMIN, BUSINESS_BOOKKEEPER, BUSINESS_OWNER, BUSINESS_USER, GUEST_USER, IT_ADMIN",
+			"ramp-connector: invalid role %q, must be one of AUDITOR, BUSINESS_ADMIN, BUSINESS_BOOKKEEPER, BUSINESS_USER, GUEST_USER, IT_ADMIN",
 			role)
 	}
 

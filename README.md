@@ -62,6 +62,8 @@ baton resources
 - **Account provisioning**: create user accounts in Ramp
 - **Entitlement provisioning**: grant and revoke vendor ownership
 
+See [docs/api-support-matrix.md](docs/api-support-matrix.md) for the Ramp API field support matrix.
+
 # Contributing, Support and Issues
 
 We started Baton because we were tired of taking screenshots and manually
