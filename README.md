@@ -16,7 +16,7 @@ Required Ramp scopes:
 
 - Read-only sync: `users:read`, `vendors:read`
 - Provisioning: add `users:write` to create/deactivate/reactivate users and `vendors:write` to grant/revoke vendor ownership
-- Audit-log event polling: add `audit_logs:read` and set `BATON_AUDIT_LOG_EVENTS=true`
+- Audit-log event polling: requires Ramp audit-log API availability, such as Ramp Plus; add `audit_logs:read` and set `BATON_AUDIT_LOG_EVENTS=true`
 
 Vendor agreements are an opt-in Baton resource type and use Ramp's `vendors:read` scope. Ramp does not expose or require a separate `vendor_agreements:read` scope for this connector.
 

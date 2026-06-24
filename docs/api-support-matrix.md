@@ -44,7 +44,7 @@ The current Ramp user list/fetch role enum has expanded beyond the original v1 s
 | `PATCH /developer/v1/vendors/{vendor_id}` | Yes | Partial / undocumented | Existing connector code sends `vendor_owner_id` to set or clear owner, but the current public PATCH schema does not list `vendor_owner_id`. Other mutable vendor fields are not managed. |
 | `POST /developer/v1/vendors/agreements` | Yes | Partial | Opt-in `vendor_agreement` resource type. Lists agreements, emits VendorTrait and VendorAgreementTrait, and caches contract owners for grants. Requires `vendors:read`. |
 | `GET /developer/v1/vendors/agreements/{agreement_id}` | Yes | Partial | Supports targeted sync and grant fallback. Requires `vendors:read`. |
-| `GET /developer/v1/audit-logs/events` | Optional | Partial | Enabled only with `audit-log-events`; filters Ramp vendor-management events into vendor and vendor-agreement change events. Requires `audit_logs:read`. |
+| `GET /developer/v1/audit-logs/events` | Optional | Partial | Enabled only with `audit-log-events`; filters Ramp vendor-management events into vendor and vendor-agreement change events. Requires Ramp audit-log API availability, such as Ramp Plus, and `audit_logs:read`. |
 | `GET /developer/v1/business` | No | Missing | Not called. The connector does not require `business:read`; `source_business_id` remains empty. |
 | Other vendor endpoints | No | Missing | Contacts, bank accounts, credits, children, and document flows are out of scope. |
 
@@ -192,7 +192,7 @@ Fields from `POST /developer/v1/vendors/agreements` and `GET /developer/v1/vendo
 
 ## Audit-log event support
 
-`GET /developer/v1/audit-logs/events` is used only when `audit-log-events` / `BATON_AUDIT_LOG_EVENTS` is enabled.
+`GET /developer/v1/audit-logs/events` is used only when `audit-log-events` / `BATON_AUDIT_LOG_EVENTS` is enabled. The endpoint requires Ramp audit-log API availability, such as Ramp Plus.
 
 | Ramp audit-log field | Connector support | Code path | Notes |
 |---|---|---|---|
@@ -200,8 +200,8 @@ Fields from `POST /developer/v1/vendors/agreements` and `GET /developer/v1/vendo
 | `event_time` | Full | `pkg/client/audit_log.go`, `pkg/connector/audit_event_feed.go` | Used as event timestamp and high-water mark. |
 | `event_type` | Partial | `pkg/connector/audit_event_feed.go` | Only vendor-management event types that imply vendor/vendor-agreement resource changes are emitted. |
 | `primary_reference.resource_name` | Partial | `pkg/connector/audit_event_feed.go` | Only `Vendor / Merchant` references are emitted. |
-| `primary_reference.id` | Full for emitted events | `pkg/connector/audit_event_feed.go` | Used as the changed vendor or vendor-agreement resource ID. |
-| `primary_reference.url` | Partial | `pkg/connector/audit_event_feed.go` | `/contracts/...` maps to `vendor_agreement`; other accepted vendor-management URLs map to `vendor`. |
+| `primary_reference.id` | Partial | `pkg/connector/audit_event_feed.go` | Used as the changed vendor resource ID. Agreement events use the contract ID from `primary_reference.url`. |
+| `primary_reference.url` | Partial | `pkg/connector/audit_event_feed.go` | `/contracts/<agreement-id>` maps to `vendor_agreement/<agreement-id>`; other accepted vendor-management URLs map to `vendor/<primary_reference.id>`. |
 | User or role audit events | Missing | n/a | Not emitted until Ramp audit references are verified to carry the same user IDs the connector syncs and targeted user sync is implemented. |
 
 ## OAuth scope support
@@ -212,7 +212,7 @@ Fields from `POST /developer/v1/vendors/agreements` and `GET /developer/v1/vendo
 | Read vendors and vendor agreements | `vendors:read` |
 | Create/deactivate/reactivate users when provisioning is enabled | `users:write` |
 | Grant/revoke vendor ownership when provisioning is enabled | `vendors:write` |
-| Read audit-log events when `audit-log-events` is enabled | `audit_logs:read` |
+| Read audit-log events when `audit-log-events` is enabled | Ramp audit-log API availability, such as Ramp Plus, plus `audit_logs:read` |
 | Business lookup | Not used; `business:read` is not required. |
 | Vendor agreements | No separate scope; Ramp uses `vendors:read`. |
 

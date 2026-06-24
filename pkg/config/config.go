@@ -47,7 +47,7 @@ var (
 		field.WithDisplayName("Sync audit log events"),
 		field.WithDescription(
 			"Enable Ramp audit-log polling for incremental sync events. "+
-				"Adds the audit_logs:read OAuth scope. Default off.",
+				"Requires Ramp audit-log API availability, such as Ramp Plus, and adds the audit_logs:read OAuth scope. Default off.",
 		),
 		field.WithDefaultValue(false),
 	)

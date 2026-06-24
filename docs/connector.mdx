@@ -234,7 +234,7 @@ See the [Ramp authorization docs](https://docs.ramp.com/developer-api/v1/authori
 
 - **Required for read-only sync**: `users:read`, `vendors:read`.
 - **Required only if `BATON_PROVISIONING=true`**: `users:write`, `vendors:write`.
-- **Required only if `BATON_AUDIT_LOG_EVENTS=true`**: `audit_logs:read`.
+- **Required only if `BATON_AUDIT_LOG_EVENTS=true`**: Ramp audit-log API availability, such as Ramp Plus, and the `audit_logs:read` scope.
 
 The connector points at `https://api.ramp.com` by default. Set `BATON_RAMP_BASE_URL` (or the **Ramp API Base URL** field) to `https://demo-api.ramp.com` (or another Ramp environment) to override.
 
@@ -244,7 +244,7 @@ The connector ships with an opt-in `vendor_agreement` resource type. When enable
 
 Ramp vendors are always decorated with cross-system identity and pre-aggregated trailing-window spend when those fields are returned by Ramp.
 
-Set `BATON_AUDIT_LOG_EVENTS=true` to expose Ramp's audit-log API as an event feed so vendor and agreement changes can flow into C1 incrementally between full syncs. This setting is independent from vendor-agreement resource enablement and requires the `audit_logs:read` scope. When the flag is unset (the default), the audit-log API is not called.
+Set `BATON_AUDIT_LOG_EVENTS=true` to expose Ramp's audit-log API as an event feed so vendor and agreement changes can flow into C1 incrementally between full syncs. This setting is independent from vendor-agreement resource enablement and requires Ramp audit-log API availability, such as Ramp Plus, plus the `audit_logs:read` scope. When the flag is unset (the default), the audit-log API is not called.
 
 #### Secrets configuration
 
@@ -269,6 +269,7 @@ stringData:
   BATON_PROVISIONING: true
 
   # Optional: include if you want audit-log incremental sync events.
+  # Requires Ramp audit-log API availability, such as Ramp Plus.
   BATON_AUDIT_LOG_EVENTS: "true"
 ```
 
@@ -294,6 +295,7 @@ stringData:
   BATON_PROVISIONING: true
 
   # Optional: include if you want audit-log incremental sync events.
+  # Requires Ramp audit-log API availability, such as Ramp Plus.
   # When set, the OAuth client must also have the `audit_logs:read` scope.
   BATON_AUDIT_LOG_EVENTS: "true"
 ```
