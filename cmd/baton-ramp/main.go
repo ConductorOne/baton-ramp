@@ -23,12 +23,55 @@ import (
 
 var version = "dev"
 
-// rampOAuthScopes are the OAuth scopes requested when authenticating via client credentials.
-// users:read    — list users (ListUsers)
-// users:write   — create/deactivate/reactivate users (CreateUser, DeactivateUser, ReactivateUser)
-// vendors:read  — list vendors (ListVendors, GetVendor)
-// vendors:write — update vendor owner (UpdateVendorOwner) for vendor owner grant/revoke
-var rampOAuthScopes = []string{"users:read", "users:write", "vendors:read", "vendors:write"}
+// baseRampOAuthScopes are the OAuth scopes requested by every install.
+// users:read   — list users (ListUsers)
+// vendors:read — list vendors and vendor agreements (ListVendors, GetVendor, ListVendorAgreements)
+const (
+	usersReadScope   = "users:read"
+	vendorsReadScope = "vendors:read"
+
+	// users:write   — create/deactivate/reactivate users (CreateUser, DeactivateUser, ReactivateUser)
+	usersWriteScope = "users:write"
+	// vendors:write — update vendor owner (UpdateVendorOwner) for vendor owner grant/revoke
+	vendorsWriteScope = "vendors:write"
+
+	// auditLogsScope is appended only when the audit-log-events flag is true.
+	// It reads audit-log events for the incremental sync feed.
+	auditLogsScope = "audit_logs:read"
+
+	vendorAgreementResourceTypeID = "vendor_agreement"
+)
+
+var baseRampOAuthScopes = []string{usersReadScope, vendorsReadScope}
+
+// provisioningRampOAuthScopes are requested only when provisioning is enabled.
+var provisioningRampOAuthScopes = []string{usersWriteScope, vendorsWriteScope}
+
+// buildOAuthScopes returns the OAuth scopes for the connector based on the
+// resolved config.
+func buildOAuthScopes(cc *cfg.Ramp) []string {
+	scopes := make([]string, 0, len(baseRampOAuthScopes)+len(provisioningRampOAuthScopes)+1)
+	scopes = append(scopes, baseRampOAuthScopes...)
+	if cc.Provisioning {
+		scopes = append(scopes, provisioningRampOAuthScopes...)
+	}
+	if cc.AuditLogEvents {
+		scopes = append(scopes, auditLogsScope)
+	}
+	return scopes
+}
+
+func vendorAgreementEnabled(resourceTypeIDs []string) bool {
+	if len(resourceTypeIDs) == 0 {
+		return true
+	}
+	for _, rt := range resourceTypeIDs {
+		if rt == vendorAgreementResourceTypeID {
+			return true
+		}
+	}
+	return false
+}
 
 func main() {
 	ctx := context.Background()
@@ -75,7 +118,7 @@ func getConnector(ctx context.Context, cc *cfg.Ramp, runTimeOpts cli.RunTimeOpts
 			ClientID:     cc.RampClientId,
 			ClientSecret: cc.RampClientSecret,
 			TokenURL:     client.TokenURL(cc.RampBaseUrl),
-			Scopes:       rampOAuthScopes,
+			Scopes:       buildOAuthScopes(cc),
 		}
 		authOpt = connector.WithTokenSource(ctx, ccCfg.TokenSource(ctx))
 	case cfg.AccessTokenGroup:
@@ -84,7 +127,13 @@ func getConnector(ctx context.Context, cc *cfg.Ramp, runTimeOpts cli.RunTimeOpts
 		return nil, fmt.Errorf("baton-ramp-connector: unknown auth method %q", authMethod)
 	}
 
-	cb, err := connector.New(ctx, connector.WithBaseURL(cc.RampBaseUrl), authOpt)
+	cb, err := connector.New(
+		ctx,
+		connector.WithBaseURL(cc.RampBaseUrl),
+		connector.WithVendorAgreements(vendorAgreementEnabled(runTimeOpts.SyncResourceTypeIDs)),
+		connector.WithAuditLogEvents(cc.AuditLogEvents),
+		authOpt,
+	)
 	if err != nil {
 		l.Error("error creating connector", zap.Error(err))
 		return nil, err

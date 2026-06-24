@@ -131,6 +131,12 @@
       "stringField": {
         "defaultValue": "https://api.ramp.com"
       }
+    },
+    {
+      "name": "audit-log-events",
+      "displayName": "Sync audit log events",
+      "description": "Enable Ramp audit-log polling for incremental sync events. Requires Ramp audit-log API availability, such as Ramp Plus, and adds the audit_logs:read OAuth scope. Default off.",
+      "boolField": {}
     }
   ],
   "displayName": "Ramp",
@@ -143,7 +149,8 @@
       "helpText": "Authenticate using a Ramp API access token.",
       "fields": [
         "token",
-        "ramp-base-url"
+        "ramp-base-url",
+        "audit-log-events"
       ],
       "default": true
     },
@@ -154,7 +161,8 @@
       "fields": [
         "ramp-client-id",
         "ramp-client-secret",
-        "ramp-base-url"
+        "ramp-base-url",
+        "audit-log-events"
       ]
     }
   ]

@@ -12,6 +12,14 @@ A Ramp account with one of the following:
 - A Ramp API access token, **or**
 - An OAuth 2.0 client ID and secret issued by Ramp
 
+Required Ramp scopes:
+
+- Read-only sync: `users:read`, `vendors:read`
+- Provisioning: add `users:write` to create/deactivate/reactivate users and `vendors:write` to grant/revoke vendor ownership
+- Audit-log event polling: requires Ramp audit-log API availability, such as Ramp Plus; add `audit_logs:read` and set `BATON_AUDIT_LOG_EVENTS=true`
+
+Vendor agreements are an opt-in Baton resource type and use Ramp's `vendors:read` scope. Ramp does not expose or require a separate `vendor_agreements:read` scope for this connector.
+
 # Getting Started
 
 ## brew
@@ -57,6 +65,7 @@ baton resources
 - Users
 - Roles
 - Vendors
+- Vendor agreements (opt-in resource type)
 
 `baton-ramp` supports:
 - **Account provisioning**: create user accounts in Ramp
@@ -90,6 +99,7 @@ Available Commands:
   help               Help about any command
 
 Flags:
+      --audit-log-events                                 Enable Ramp audit-log polling for incremental sync events. Adds the audit_logs:read OAuth scope. Default off. ($BATON_AUDIT_LOG_EVENTS)
       --auth-method string                               Authentication method: "access_token" or "client_credentials" ($BATON_AUTH_METHOD)
       --client-id string                                 The client ID used to authenticate with ConductorOne ($BATON_CLIENT_ID)
       --client-secret string                             The client secret used to authenticate with ConductorOne ($BATON_CLIENT_SECRET)
@@ -108,6 +118,7 @@ Flags:
       --ramp-client-id string                            Ramp OAuth client ID — required when using client_credentials auth ($BATON_RAMP_CLIENT_ID)
       --ramp-client-secret string                        Ramp OAuth client secret — required when using client_credentials auth ($BATON_RAMP_CLIENT_SECRET)
       --skip-full-sync                                   This must be set to skip a full sync ($BATON_SKIP_FULL_SYNC)
+      --sync-resource-types strings                      The resource type IDs to sync ($BATON_SYNC_RESOURCE_TYPES)
       --sync-resources strings                           The resource IDs to sync ($BATON_SYNC_RESOURCES)
       --ticketing                                        This must be set to enable ticketing support ($BATON_TICKETING)
       --token string                                     Ramp API access token — required when using access_token auth ($BATON_TOKEN)

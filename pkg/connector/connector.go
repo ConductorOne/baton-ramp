@@ -13,8 +13,10 @@ import (
 )
 
 type Connector struct {
-	client  *client.Client
-	baseURL string
+	client                  *client.Client
+	baseURL                 string
+	disableVendorAgreements bool
+	auditLogEventsEnabled   bool
 }
 
 type Option func(*Connector) error
@@ -28,13 +30,46 @@ func WithBaseURL(baseURL string) Option {
 	}
 }
 
+// WithVendorAgreements controls the vendor_agreement resource syncer. The
+// resource type is advertised with OptInRequired so C1 resource-type
+// enablement decides whether it is included in normal platform syncs.
+func WithVendorAgreements(enabled bool) Option {
+	return func(c *Connector) error {
+		c.disableVendorAgreements = !enabled
+		return nil
+	}
+}
+
+// WithAuditLogEvents opts the connector into Ramp audit-log polling for
+// incremental sync. Default false so installs without audit_logs:read keep
+// working.
+func WithAuditLogEvents(enabled bool) Option {
+	return func(c *Connector) error {
+		c.auditLogEventsEnabled = enabled
+		return nil
+	}
+}
+
 // ResourceSyncers returns a ResourceSyncer for each resource type that should be synced from the upstream service.
 func (d *Connector) ResourceSyncers(ctx context.Context) []connectorbuilder.ResourceSyncer {
-	return []connectorbuilder.ResourceSyncer{
+	syncers := []connectorbuilder.ResourceSyncer{
 		newUserBuilder(d.client),
 		newRoleBuilder(d.client),
 		newVendorBuilder(d.client),
 	}
+	if !d.disableVendorAgreements {
+		syncers = append(syncers, newVendorAgreementBuilder(d.client))
+	}
+	return syncers
+}
+
+// EventFeeds advertises the audit-log feed when audit-log-events is enabled.
+// Returns nil otherwise (no feeds advertised = zero audit-log API calls).
+func (d *Connector) EventFeeds(ctx context.Context) []connectorbuilder.EventFeed {
+	if !d.auditLogEventsEnabled {
+		return nil
+	}
+	return []connectorbuilder.EventFeed{newAuditEventFeed(d.client, !d.disableVendorAgreements)}
 }
 
 // Asset takes an input AssetRef and attempts to fetch it using the connector's authenticated http client
@@ -88,10 +123,17 @@ func (d *Connector) Metadata(ctx context.Context) (*v2.ConnectorMetadata, error)
 	}, nil
 }
 
-// Validate is called to ensure that the connector is properly configured. It should exercise any API credentials
-// to be sure that they are valid.
 func (d *Connector) Validate(ctx context.Context) (annotations.Annotations, error) {
-	return nil, nil
+	var annos annotations.Annotations
+	if d.client == nil {
+		return annos, fmt.Errorf("baton-ramp: connector client not configured")
+	}
+	_, ratelimitData, err := d.client.ListUsers(ctx, "")
+	annos.WithRateLimiting(ratelimitData)
+	if err != nil {
+		return annos, fmt.Errorf("baton-ramp: validate failed: %w", err)
+	}
+	return annos, nil
 }
 
 // WithToken configures the connector to use an access token.
