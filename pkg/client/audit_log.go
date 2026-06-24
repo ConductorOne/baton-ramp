@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 )
@@ -51,23 +52,32 @@ func (c *Client) ListAuditLogEvents(
 }
 
 // flattenAuditEvents tolerates both the spec-documented `data: T[][]` shape
-// and the more-likely flat `data: T[]` shape. Each top-level entry is tried
-// as an array of events first; if that fails it's tried as a single event.
+// and a flat `data: T[]` shape. Each top-level entry is decoded based on its
+// JSON token shape rather than by speculative unmarshal fallback.
 func flattenAuditEvents(raw []json.RawMessage) ([]*AuditLogEvent, error) {
 	out := make([]*AuditLogEvent, 0, len(raw))
 	for _, item := range raw {
-		// Try array-of-events.
-		var batch []*AuditLogEvent
-		if err := json.Unmarshal(item, &batch); err == nil {
+		trimmed := strings.TrimSpace(string(item))
+		if trimmed == "" {
+			return nil, fmt.Errorf("baton-ramp: failed to decode audit log entry: empty entry")
+		}
+
+		switch trimmed[0] {
+		case '[':
+			var batch []*AuditLogEvent
+			if err := json.Unmarshal(item, &batch); err != nil {
+				return nil, fmt.Errorf("baton-ramp: failed to decode audit log entry batch: %w", err)
+			}
 			out = append(out, batch...)
-			continue
+		case '{':
+			ev := &AuditLogEvent{}
+			if err := json.Unmarshal(item, ev); err != nil {
+				return nil, fmt.Errorf("baton-ramp: failed to decode audit log entry: %w", err)
+			}
+			out = append(out, ev)
+		default:
+			return nil, fmt.Errorf("baton-ramp: failed to decode audit log entry: expected object or array")
 		}
-		// Fall back to single event.
-		ev := &AuditLogEvent{}
-		if err := json.Unmarshal(item, ev); err != nil {
-			return nil, fmt.Errorf("baton-ramp: failed to decode audit log entry: %w", err)
-		}
-		out = append(out, ev)
 	}
 	return out, nil
 }

@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// TestFlattenAuditEvents_FlatArray covers the likely real-world wire
-// shape: data is a flat array of events.
+// TestFlattenAuditEvents_FlatArray covers compatibility with a flat data
+// array. Values are anonymized synthetic fixtures, not live audit data.
 func TestFlattenAuditEvents_FlatArray(t *testing.T) {
 	body := []byte(`[
 		{"id": "ev1", "event_type": "Vendor management agreement status changed", "primary_reference": {"id": "vendor-1", "resource_name": "Vendor / Merchant", "url": "/vendors/vendor-1"}},
@@ -28,8 +28,8 @@ func TestFlattenAuditEvents_FlatArray(t *testing.T) {
 	}
 }
 
-// TestFlattenAuditEvents_NestedArray covers the spec-documented (likely
-// wrong but defensively handled) nested-array shape.
+// TestFlattenAuditEvents_NestedArray covers the spec-documented nested-array
+// shape. Values are anonymized synthetic fixtures, not live audit data.
 func TestFlattenAuditEvents_NestedArray(t *testing.T) {
 	body := []byte(`[
 		[
@@ -58,8 +58,8 @@ func TestFlattenAuditEvents_NestedArray(t *testing.T) {
 	}
 }
 
-// TestFlattenAuditEvents_Mixed covers the unlikely-but-defensible case
-// of mixed flat-and-nested entries; both shapes flatten correctly.
+// TestFlattenAuditEvents_Mixed covers the defensively tolerated case of mixed
+// flat-and-nested entries; both shapes flatten correctly.
 func TestFlattenAuditEvents_Mixed(t *testing.T) {
 	body := []byte(`[
 		{"id": "ev1", "event_type": "X", "primary_reference": {"id": "v1", "resource_name": "Vendor / Merchant", "url": "/v/1"}},
@@ -71,13 +71,18 @@ func TestFlattenAuditEvents_Mixed(t *testing.T) {
 	if err := json.Unmarshal(body, &raw); err != nil {
 		t.Fatal(err)
 	}
-	// flattenAuditEvents tries array-of-events first; the bare object
-	// fails the array decode but succeeds the single-event decode.
 	got, err := flattenAuditEvents(raw)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(got) != 2 {
 		t.Fatalf("expected 2 events, got %d", len(got))
+	}
+}
+
+func TestFlattenAuditEvents_RejectsUnexpectedScalar(t *testing.T) {
+	raw := []json.RawMessage{json.RawMessage(`"not-an-event"`)}
+	if _, err := flattenAuditEvents(raw); err == nil {
+		t.Fatal("expected scalar audit log entry to fail")
 	}
 }
