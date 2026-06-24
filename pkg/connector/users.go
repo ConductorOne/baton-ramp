@@ -17,8 +17,7 @@ import (
 )
 
 // validCreateRoles is the set of roles the Ramp API accepts when creating a user via the deferred endpoint.
-// This differs from the roles returned during sync (roles.go): AUDITOR and GUEST_USER are accepted at
-// creation but not returned as assignable roles in the listing, so both sets must be maintained separately.
+// The read enum includes additional UNBUNDLED_* roles that are not accepted by create or update.
 var validCreateRoles = map[string]bool{
 	"AUDITOR":             true,
 	"BUSINESS_ADMIN":      true,

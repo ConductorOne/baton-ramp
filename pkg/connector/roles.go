@@ -18,7 +18,7 @@ type roleBuilder struct {
 	client *client.Client
 }
 
-// roles is the complete set of role values returned by the Ramp API.
+// roles is the complete set of role values returned by GET /developer/v1/users.
 // See https://docs.ramp.com/developer-api/v1/api/users for the role enum.
 var roles = []client.Role{
 	{
@@ -48,6 +48,22 @@ var roles = []client.Role{
 	{
 		ID:   "GUEST_USER",
 		Name: "Guest",
+	},
+	{
+		ID:   "UNBUNDLED_ADMIN",
+		Name: "Unbundled Admin",
+	},
+	{
+		ID:   "UNBUNDLED_BOOKKEEPER",
+		Name: "Unbundled Bookkeeper",
+	},
+	{
+		ID:   "UNBUNDLED_OWNER",
+		Name: "Unbundled Owner",
+	},
+	{
+		ID:   "UNBUNDLED_USER",
+		Name: "Unbundled User",
 	},
 }
 
