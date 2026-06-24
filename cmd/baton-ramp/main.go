@@ -28,12 +28,17 @@ var version = "dev"
 // users:write   — create/deactivate/reactivate users (CreateUser, DeactivateUser, ReactivateUser)
 // vendors:read  — list vendors (ListVendors, GetVendor)
 // vendors:write — update vendor owner (UpdateVendorOwner) for vendor owner grant/revoke
-// business:read — fetch business id for source_business_id and access audit-log events
-var baseRampOAuthScopes = []string{"users:read", "users:write", "vendors:read", "vendors:write", "business:read"}
+var baseRampOAuthScopes = []string{"users:read", "users:write", "vendors:read", "vendors:write"}
 
-// vendorManagementScope is appended only when the vendor-management flag
-// is true. Listing and reading vendor agreements requires it.
-const vendorManagementScope = "vendor_agreements:read"
+const (
+	// businessScope is appended only when the vendor-management flag is true.
+	// It fetches the business id for source_business_id and accesses audit-log events.
+	businessScope = "business:read"
+
+	// vendorManagementScope is appended only when the vendor-management flag
+	// is true. Listing and reading vendor agreements requires it.
+	vendorManagementScope = "vendor_agreements:read"
+)
 
 // buildOAuthScopes returns the OAuth scopes for the connector based on the
 // resolved config. Adding new scopes here must remain backward-compatible
@@ -42,6 +47,7 @@ func buildOAuthScopes(cc *cfg.Ramp) []string {
 	scopes := make([]string, 0, len(baseRampOAuthScopes)+1)
 	scopes = append(scopes, baseRampOAuthScopes...)
 	if cc.VendorManagement {
+		scopes = append(scopes, businessScope)
 		scopes = append(scopes, vendorManagementScope)
 	}
 	return scopes

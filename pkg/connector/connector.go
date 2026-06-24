@@ -121,14 +121,16 @@ func (d *Connector) Metadata(ctx context.Context) (*v2.ConnectorMetadata, error)
 	}, nil
 }
 
-// Validate exercises the configured credentials. Calls
-// GET /developer/v1/business: a cheap, scope-checked probe that also
-// caches the Ramp business id for use as source_business_id on emitted
-// vendor / vendor_agreement traits.
+// Validate exercises configured credentials for vendor-management mode.
+// GET /developer/v1/business is skipped in the default mode so existing
+// installs without business:read keep working.
 func (d *Connector) Validate(ctx context.Context) (annotations.Annotations, error) {
 	var annos annotations.Annotations
 	if d.client == nil {
 		return annos, fmt.Errorf("baton-ramp: connector client not configured")
+	}
+	if !d.vendorManagementEnabled {
+		return annos, nil
 	}
 	business, ratelimitData, err := d.client.GetBusiness(ctx)
 	annos.WithRateLimiting(ratelimitData)
@@ -139,8 +141,9 @@ func (d *Connector) Validate(ctx context.Context) (annotations.Annotations, erro
 	return annos, nil
 }
 
-// BusinessID returns the cached Ramp business id (populated by Validate).
-// Empty when Validate has not run yet.
+// BusinessID returns the cached Ramp business id populated by Validate in
+// vendor-management mode. Empty when vendor-management is disabled or
+// Validate has not run yet.
 func (d *Connector) BusinessID() string {
 	return d.businessID
 }

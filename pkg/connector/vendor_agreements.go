@@ -129,6 +129,7 @@ func (b *vendorAgreementBuilder) buildAgreementResource(agreement *client.Vendor
 		agreement.Name,
 		vendorAgreementResourceType,
 		agreement.ID,
+		resourceSdk.WithExternalID(&v2.ExternalId{Id: agreement.ID}),
 		vendorTraitOption,
 		agreementTraitOption,
 	)
@@ -264,6 +265,9 @@ func parseRampDate(s string) (time.Time, error) {
 // agreement. Format observed and stable; consumers validate via per-
 // source-provider host allowlist.
 func agreementDeepLinkURL(agreementID string) string {
+	if agreementID == "" {
+		return ""
+	}
 	return fmt.Sprintf("https://app.ramp.com/contracts/%s", agreementID)
 }
 

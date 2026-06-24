@@ -62,6 +62,11 @@ The Ramp connector supports two authentication methods. Choose the one that fits
     - `vendors:read` — sync vendors
     - `vendors:write` — grant and revoke vendor ownership
 
+    If you enable **Sync vendor management data**, also select:
+
+    - `business:read` — validate credentials, identify the Ramp business, and read audit-log events
+    - `vendor_agreements:read` — sync vendor agreements
+
     <Warning>
     The **users:write** and **vendors:write** scopes are used by C1 when automatically provisioning and deprovisioning access. **If you do not want C1 to perform these tasks, do not grant these scopes.**
     </Warning>
@@ -90,6 +95,11 @@ For more information, see the [Ramp API token documentation](https://docs.ramp.c
        - `users:write` — provision and deprovision users
        - `vendors:read` — sync vendors
        - `vendors:write` — grant and revoke vendor ownership
+
+       If you enable **Sync vendor management data**, also select:
+
+       - `business:read` — validate credentials, identify the Ramp business, and read audit-log events
+       - `vendor_agreements:read` — sync vendor agreements
 
     <Warning>
     The **users:write** and **vendors:write** scopes are used by C1 when automatically provisioning and deprovisioning access. **If you do not want C1 to perform these tasks, do not grant these scopes.**
@@ -217,8 +227,8 @@ The Ramp connector supports two authentication methods — pick one when populat
 
 See the [Ramp authorization docs](https://docs.ramp.com/developer-api/v1/authorization) for how to create an OAuth app with the `Client Credentials` grant type and the following scopes:
 
-- **Always required**: `users:read`, `users:write`, `vendors:read`, `vendors:write`, `business:read`.
-- **Required only if `BATON_VENDOR_MANAGEMENT=true`**: `vendor_agreements:read`.
+- **Always required**: `users:read`, `users:write`, `vendors:read`, `vendors:write`.
+- **Required only if `BATON_VENDOR_MANAGEMENT=true`**: `business:read`, `vendor_agreements:read`.
 
 The connector points at `https://api.ramp.com` by default. Set `BATON_RAMP_BASE_URL` (or the **Ramp API Base URL** field) to `https://demo-api.ramp.com` (or another Ramp environment) to override.
 
@@ -230,7 +240,7 @@ The connector ships with an opt-in vendor-management surface. When `BATON_VENDOR
 - Syncs Ramp vendor agreements as their own resources, including term, renewal status, total contract value, and contract owners.
 - Exposes Ramp's audit-log API as an event feed so vendor and agreement changes flow into C1 incrementally between full syncs.
 
-This requires the additional `vendor_agreements:read` OAuth scope above. When the flag is unset (the default), no vendor-management data is synced, no extra scopes are requested, and the audit-log API is not called.
+This requires the additional `business:read` and `vendor_agreements:read` OAuth scopes above. When the flag is unset (the default), no vendor-management data is synced, no extra scopes are requested, and the audit-log API is not called.
 
 #### Secrets configuration
 
@@ -282,8 +292,8 @@ stringData:
 
   # Optional: enable Ramp's vendor-management surface (vendor agreements,
   # pre-aggregated spend, audit-log incremental sync). Default off.
-  # When set, the OAuth client must also have the `vendor_agreements:read`
-  # scope.
+  # When set, the OAuth client must also have the `business:read` and
+  # `vendor_agreements:read` scopes.
   BATON_VENDOR_MANAGEMENT: "true"
 ```
 

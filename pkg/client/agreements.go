@@ -17,7 +17,8 @@ const vendorAgreementsPath = "vendors/agreements"
 //
 // pagination is the opaque `page.next` cursor from a previous response, or
 // "" for the first page. When pagination is non-empty, it's used verbatim
-// as the request URL (Ramp returns absolute URLs).
+// as the request URL (Ramp returns absolute URLs). The endpoint is POST-only
+// with a required body, so cursor pages preserve the same method and search body.
 //
 // https://docs.ramp.com/developer-api/v1/api/vendor-agreements
 func (c *Client) ListVendorAgreements(

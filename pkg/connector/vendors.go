@@ -115,6 +115,9 @@ func buildVendorTraitOption(vendor *client.Vendor, businessIDFn func() string) (
 // observed and stable. Validated by consumers via per-source-provider
 // host allowlist.
 func vendorDeepLinkURL(vendorID string) string {
+	if vendorID == "" {
+		return ""
+	}
 	return fmt.Sprintf("https://app.ramp.com/vendors/%s", vendorID)
 }
 
@@ -219,11 +222,15 @@ func vendorResource(vendor *client.Vendor, vendorManagementEnabled bool, busines
 			return nil, fmt.Errorf("baton-ramp: failed to build vendor trait for %s: %w", vendor.ID, err)
 		}
 	}
+	opts := []resourceSdk.ResourceOption{
+		resourceSdk.WithExternalID(&v2.ExternalId{Id: vendor.ID}),
+		traitOption,
+	}
 
 	return resourceSdk.NewResource(
 		vendor.Name,
 		vendorResourceType,
 		vendor.ID,
-		traitOption,
+		opts...,
 	)
 }

@@ -36,15 +36,15 @@ var (
 	// VendorManagement opts the connector into the vendor-management
 	// surface: vendor agreements, the audit-log incremental-sync feed,
 	// and the VendorTrait emitted on existing vendor resources. Default
-	// off; existing installs are unaffected. Requires the
-	// vendor_agreements:read OAuth scope (added at runtime when this
+	// off; existing installs are unaffected. Requires the business:read
+	// and vendor_agreements:read OAuth scopes (added at runtime when this
 	// flag is true).
 	VendorManagement = field.BoolField("vendor-management",
 		field.WithDisplayName("Sync vendor management data"),
 		field.WithDescription(
 			"Enable to sync vendor agreements (contracts), pre-aggregated spend, "+
 				"and audit-log change events from Ramp's vendor-management surface. "+
-				"Adds the vendor_agreements:read OAuth scope. Default off.",
+				"Adds the business:read and vendor_agreements:read OAuth scopes. Default off.",
 		),
 		field.WithDefaultValue(false),
 	)

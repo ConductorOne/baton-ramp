@@ -135,7 +135,7 @@
     {
       "name": "vendor-management",
       "displayName": "Sync vendor management data",
-      "description": "Enable to sync vendor agreements (contracts), pre-aggregated spend, and audit-log change events from Ramp's vendor-management surface. Adds the vendor_agreements:read OAuth scope. Default off.",
+      "description": "Enable to sync vendor agreements (contracts), pre-aggregated spend, and audit-log change events from Ramp's vendor-management surface. Adds the business:read and vendor_agreements:read OAuth scopes. Default off.",
       "boolField": {}
     }
   ],
