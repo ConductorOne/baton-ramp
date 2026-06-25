@@ -4,11 +4,16 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 )
 
-const vendorsPath = "vendors"
+const (
+	vendorsPath            = "vendors"
+	defaultVendorsPageSize = 100
+)
 
 // GET https://api.ramp.com/developer/v1/vendors
 // Required scope: vendors:read.
@@ -23,6 +28,10 @@ func (c *Client) ListVendors(ctx context.Context, pagination string) (*VendorsRe
 			return nil, nil, err
 		}
 	}
+	reqURL, err := addVendorsListParams(reqURL)
+	if err != nil {
+		return nil, nil, err
+	}
 	ratelimitData, err := c.query(ctx, http.MethodGet, reqURL, vendors)
 	if err != nil {
 		return nil, ratelimitData, fmt.Errorf("baton-ramp: error listing vendors: %w", err)
@@ -31,6 +40,19 @@ func (c *Client) ListVendors(ctx context.Context, pagination string) (*VendorsRe
 		Vendors:    vendors.Vendors,
 		Pagination: vendors.Page.Next,
 	}, ratelimitData, nil
+}
+
+func addVendorsListParams(reqURL string) (string, error) {
+	parsedURL, err := url.Parse(reqURL)
+	if err != nil {
+		return "", fmt.Errorf("baton-ramp: failed to parse vendors URL: %w", err)
+	}
+	query := parsedURL.Query()
+	if query.Get("page_size") == "" {
+		query.Set("page_size", strconv.Itoa(defaultVendorsPageSize))
+	}
+	parsedURL.RawQuery = query.Encode()
+	return parsedURL.String(), nil
 }
 
 // GET https://api.ramp.com/developer/v1/vendors/{vendor_id}

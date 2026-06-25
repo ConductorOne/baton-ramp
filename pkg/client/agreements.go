@@ -8,7 +8,10 @@ import (
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 )
 
-const vendorAgreementsPath = "vendors/agreements"
+const (
+	vendorAgreementsPath            = "vendors/agreements"
+	defaultVendorAgreementsPageSize = 100
+)
 
 // ListVendorAgreements posts a search request to
 // POST /developer/v1/vendors/agreements and returns one page of results.
@@ -36,6 +39,11 @@ func (c *Client) ListVendorAgreements(
 	}
 	if req == nil {
 		req = &VendorAgreementsListRequest{}
+	}
+	if req.PageSize <= 0 {
+		reqCopy := *req
+		reqCopy.PageSize = defaultVendorAgreementsPageSize
+		req = &reqCopy
 	}
 	list := &VendorAgreementsList{}
 	ratelimitData, err := c.queryWithBody(ctx, http.MethodPost, reqURL, req, list)

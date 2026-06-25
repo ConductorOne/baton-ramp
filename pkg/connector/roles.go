@@ -128,9 +128,16 @@ func (o *roleBuilder) Entitlements(_ context.Context, resource *v2.Resource, _ *
 func (o *roleBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
 	var annos annotations.Annotations
 
-	roleID := resource.Id.Resource
+	roleID := normalizeRampRole(strings.TrimPrefix(resource.Id.Resource, "role:"))
 
-	usersResponse, ratelimitData, err := o.client.ListUsers(ctx, pToken.Token)
+	var usersResponse *client.UsersResponse
+	var ratelimitData *v2.RateLimitDescription
+	var err error
+	if canFilterUsersByRole(roleID) {
+		usersResponse, ratelimitData, err = o.client.ListUsersByRole(ctx, roleID, pToken.Token)
+	} else {
+		usersResponse, ratelimitData, err = o.client.ListUsers(ctx, pToken.Token)
+	}
 	if err != nil {
 		return nil, "", nil, fmt.Errorf("baton-ramp: error listing users for role %s: %w", resource.Id.Resource, err)
 	}
@@ -138,9 +145,7 @@ func (o *roleBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken 
 
 	rv := []*v2.Grant{}
 	for _, user := range usersResponse.Users {
-		// resource.Id.Resource is the ID set in List(): fmt.Sprintf("role:%s", role.ID).
-		// Strip that prefix before comparing to user.Role (the raw Ramp API value).
-		if strings.TrimPrefix(roleID, "role:") != user.Role {
+		if roleID != normalizeRampRole(user.Role) {
 			continue
 		}
 
@@ -156,6 +161,35 @@ func (o *roleBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken 
 		))
 	}
 	return rv, usersResponse.Pagination, annos, nil
+}
+
+func normalizeRampRole(role string) string {
+	return strings.ToUpper(strings.TrimSpace(role))
+}
+
+func canFilterUsersByRole(role string) bool {
+	switch normalizeRampRole(role) {
+	case roleIDAuditor,
+		roleIDBusinessAdmin,
+		roleIDBusinessBookkeeper,
+		roleIDBusinessOwner,
+		roleIDBusinessUser,
+		roleIDGuestUser,
+		roleIDITAdmin:
+		return true
+	default:
+		return false
+	}
+}
+
+func isKnownRampRole(role string) bool {
+	role = normalizeRampRole(role)
+	for _, knownRole := range roles {
+		if role == normalizeRampRole(knownRole.ID) {
+			return true
+		}
+	}
+	return false
 }
 
 func newRoleBuilder(client *client.Client) *roleBuilder {

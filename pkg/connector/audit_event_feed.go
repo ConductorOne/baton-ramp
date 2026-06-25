@@ -30,6 +30,8 @@ const (
 	// eventTypeVendorAddedToManagedList is spelled exactly per the Ramp spec,
 	// including the literal double space after "management".
 	eventTypeVendorAddedToManagedList = "Vendor management  vendor added to managed list"
+
+	auditLogEventsPageSize = 100
 )
 
 // auditEventFeed implements connectorbuilder.EventFeed against Ramp's
@@ -167,7 +169,13 @@ func (f *auditEventFeed) ListEvents(
 		floorEventIDs = eventIDSet(cursor.LastEventIDs)
 	}
 
-	auditEvents, nextPageToken, ratelimitData, err := f.client.ListAuditLogEvents(ctx, cursor.NextPageToken)
+	auditEvents, nextPageToken, ratelimitData, err := f.client.ListAuditLogEvents(
+		ctx,
+		&client.AuditLogEventsRequest{
+			PageSize: auditLogEventsPageSize,
+		},
+		cursor.NextPageToken,
+	)
 	annos.WithRateLimiting(ratelimitData)
 	if err != nil {
 		return nil, nil, annos, err
@@ -267,8 +275,9 @@ func (f *auditEventFeed) ListEvents(
 }
 
 // vendorManagementEventTypes is the set of audit event types we emit
-// ResourceChangeEvents for. Filter is client-side because Ramp's
-// audit-logs endpoint takes no documented event_type query param.
+// ResourceChangeEvents for. Keep this filter local until the audit-log API's
+// event_types/resource_name query semantics can be validated against a Ramp
+// Plus tenant.
 //
 // String spelling and spacing (including the literal double space in two
 // of the "Vendor management" entries) matches the Ramp spec exactly. Do

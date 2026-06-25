@@ -80,6 +80,38 @@ func TestListVendorAgreementsUsesPostBodyForCursorPages(t *testing.T) {
 	}
 }
 
+func TestListVendorAgreementsDefaultsPageSize(t *testing.T) {
+	ctx := context.Background()
+	var body string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rawBody, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body = string(rawBody)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[],"page":{"next":""}}`))
+	}))
+	defer server.Close()
+
+	c, err := New(ctx, Token{AccessToken: "token"}, server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req := &VendorAgreementsListRequest{}
+	if _, _, err := c.ListVendorAgreements(ctx, req, ""); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(body, `"page_size":100`) {
+		t.Fatalf("request body missing default page size: %s", body)
+	}
+	if req.PageSize != 0 {
+		t.Fatalf("expected caller request to remain unmodified, got page size %d", req.PageSize)
+	}
+}
+
 func TestVendorAgreementsListUnmarshalBareArray(t *testing.T) {
 	var got VendorAgreementsList
 	if err := json.Unmarshal([]byte(`[{"id":"agreement-1","name":"MSA"}]`), &got); err != nil {
