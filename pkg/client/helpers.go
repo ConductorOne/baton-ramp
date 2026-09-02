@@ -90,7 +90,8 @@ func (c *Client) queryWithBody(ctx context.Context, method, requestURL string, b
 }
 
 // queryCollection issues a request against a collection (list/pagination)
-// endpoint, classifying an HTTP 404 as a fault rather than a benign miss.
+// endpoint on the *sync* path, classifying an HTTP 404 as a fault rather than a
+// benign miss.
 //
 // uhttp maps 404 to codes.NotFound, and the SDK's IsSyncPreservable
 // (baton-sdk/pkg/sync/syncer.go) lists codes.NotFound as recoverable. For a
@@ -99,14 +100,23 @@ func (c *Client) queryWithBody(ctx context.Context, method, requestURL string, b
 // 404 there means the request failed, not that there are no more users. Left
 // as NotFound, a 404 mid-pagination lets a partial sync be preserved and
 // ingested as though it had completed, silently dropping every record past the
-// page that failed.
+// page that failed. codes.Internal is not on the preservable list, so the sync
+// fails instead.
 //
-// codes.Internal is not on the preservable list, so the sync fails instead.
+// Scope: sync list endpoints only. The audit-log event feed deliberately keeps
+// plain query and its NotFound classification -- no c1z is at stake there, so
+// artifact preservation is not the concern, and a 404 from that endpoint is a
+// plausible tenant-configuration signal (audit logs not enabled) that should
+// not be reported as a connector fault. See the note in ListAuditLogEvents.
+//
+// The original error is joined rather than formatted in, so errors.Is/errors.As
+// still reach the uhttp cause; codes.Internal wins because WrapErrors puts its
+// own status first in the joined chain.
 func (c *Client) queryCollection(ctx context.Context, method, requestURL string, body, res any) (*v2.RateLimitDescription, error) {
 	ratelimitData, err := c.queryWithBody(ctx, method, requestURL, body, res)
 	if err != nil && status.Code(err) == codes.NotFound {
-		return ratelimitData, status.Errorf(codes.Internal,
-			"collection endpoint returned 404, which is never a benign empty result: %v", err)
+		return ratelimitData, uhttp.WrapErrors(codes.Internal,
+			"collection endpoint returned 404, which is never a benign empty result", err)
 	}
 	return ratelimitData, err
 }
@@ -118,15 +128,18 @@ func (c *Client) queryCollection(ctx context.Context, method, requestURL string,
 //
 // This is legitimate when the collection size is an exact multiple of pageSize,
 // so it warns rather than failing. See the note in ListUsers.
-func warnIfTruncatedPage(ctx context.Context, endpoint string, returned, pageSize int, next string) {
+func warnIfTruncatedPage(ctx context.Context, endpoint string, returned, pageSize int, next string, extra ...zap.Field) {
 	if next != "" || pageSize <= 0 || returned < pageSize {
 		return
 	}
-	ctxzap.Extract(ctx).Warn(
-		"ramp-client: full page returned with no next cursor; the list may be truncated",
+	fields := append([]zap.Field{
 		zap.String("endpoint", endpoint),
 		zap.Int("returned", returned),
 		zap.Int("page_size", pageSize),
+	}, extra...)
+	ctxzap.Extract(ctx).Warn(
+		"ramp-client: full page returned with no next cursor; the list may be truncated",
+		fields...,
 	)
 }
 

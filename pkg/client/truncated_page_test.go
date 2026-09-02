@@ -140,3 +140,117 @@ func TestListUsersNoWarnOnFullPageWithCursor(t *testing.T) {
 		t.Errorf("unexpected truncation warning: %s", out)
 	}
 }
+
+// The incident hinged on the unfiltered list truncating while the role-filtered
+// lists were complete, so the warning has to say which list it came from.
+func TestListUsersTruncationWarningNamesTheList(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		role     string
+		wantRole string
+	}{
+		{name: "unfiltered", role: "", wantRole: `"role":"(unfiltered)"`},
+		{name: "role filtered", role: "BUSINESS_USER", wantRole: `"role":"BUSINESS_USER"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, logs := ctxWithWarnLogger(t)
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(usersPage(100, "")))
+			}))
+			defer server.Close()
+
+			c, err := New(ctx, Token{AccessToken: "token"}, server.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if tc.role == "" {
+				_, _, err = c.ListUsers(ctx, "")
+			} else {
+				_, _, err = c.ListUsersByRole(ctx, tc.role, "")
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			out := logs.String()
+			if !strings.Contains(out, "the list may be truncated") {
+				t.Fatalf("expected a truncation warning, got: %s", out)
+			}
+			if !strings.Contains(out, tc.wantRole) {
+				t.Errorf("expected %s in the warning, got: %s", tc.wantRole, out)
+			}
+		})
+	}
+}
+
+// The audit-log feed keeps its NotFound classification but still reports the
+// truncation shape, since a missing cursor ends the page walk and drops events.
+func TestListAuditLogEventsWarnsOnFullPageWithoutCursor(t *testing.T) {
+	ctx, logs := ctxWithWarnLogger(t)
+
+	events := make([]string, 0, 100)
+	for i := 0; i < 100; i++ {
+		id := strconv.Itoa(i)
+		events = append(events, `{"id":"e`+id+`","event_type":"USER_UPDATED",`+
+			`"event_time":"2026-09-01T12:00:00Z","actor_type":"USER","actor_id":"a`+id+`"}`)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[` + strings.Join(events, ",") + `],"page":{"next":""}}`))
+	}))
+	defer server.Close()
+
+	c, err := New(ctx, Token{AccessToken: "token"}, server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got, next, _, err := c.ListAuditLogEvents(ctx, &AuditLogEventsRequest{}, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) != 100 || next != "" {
+		t.Fatalf("got %d events, next=%q; want 100 and empty", len(got), next)
+	}
+	if out := logs.String(); !strings.Contains(out, "the list may be truncated") {
+		t.Errorf("expected a truncation warning, got: %s", out)
+	}
+}
+
+// Vendor agreements carry page_size in the POST body, so the warning reads it
+// from the request rather than the URL.
+func TestListVendorAgreementsWarnsOnFullPageWithoutCursor(t *testing.T) {
+	ctx, logs := ctxWithWarnLogger(t)
+
+	items := make([]string, 0, 100)
+	for i := 0; i < 100; i++ {
+		items = append(items, `{"id":"a`+strconv.Itoa(i)+`"}`)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[` + strings.Join(items, ",") + `],"page":{"next":""}}`))
+	}))
+	defer server.Close()
+
+	c, err := New(ctx, Token{AccessToken: "token"}, server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, _, err = c.ListVendorAgreements(ctx, &VendorAgreementsListRequest{}, ""); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	out := logs.String()
+	if !strings.Contains(out, "the list may be truncated") {
+		t.Fatalf("expected a truncation warning, got: %s", out)
+	}
+	if !strings.Contains(out, `"page_size":100`) {
+		t.Errorf("expected the body page_size in the warning, got: %s", out)
+	}
+}

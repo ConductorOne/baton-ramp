@@ -53,7 +53,12 @@ func (c *Client) ListAuditLogEvents(
 		return nil, "", nil, err
 	}
 	resp := &AuditLogEventsList{}
-	ratelimitData, err := c.queryCollection(ctx, http.MethodGet, reqURL, nil, resp)
+	// Deliberately plain query, not queryCollection: this endpoint feeds the
+	// event feed, not a sync, so there is no partial c1z to be preserved and
+	// mistaken for a complete one. A 404 here is also a plausible
+	// tenant-configuration signal (audit logs not enabled for the tenant), and
+	// re-coding it to Internal would report that as a connector fault.
+	ratelimitData, err := c.query(ctx, http.MethodGet, reqURL, resp)
 	if err != nil {
 		return nil, "", ratelimitData, fmt.Errorf("baton-ramp: error listing audit log events: %w", err)
 	}
@@ -62,6 +67,9 @@ func (c *Client) ListAuditLogEvents(
 	if err != nil {
 		return nil, "", ratelimitData, err
 	}
+	// Detection still applies: a full page with no cursor ends the feed's page
+	// walk early and silently drops the events past it.
+	warnIfTruncatedPage(ctx, auditLogEventsPath, len(events), effectivePageSize(reqURL), resp.Page.Next)
 	return events, resp.Page.Next, ratelimitData, nil
 }
 

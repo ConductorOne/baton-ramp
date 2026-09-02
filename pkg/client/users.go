@@ -9,6 +9,7 @@ import (
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 const (
@@ -64,7 +65,15 @@ func (c *Client) listUsers(ctx context.Context, pagination string, role string) 
 	// sync saw all 158. Nothing in a single response distinguishes that from a
 	// collection holding exactly page_size records, so this reports the shape
 	// rather than failing on it.
-	warnIfTruncatedPage(ctx, usersEndpoint, len(users.Users), effectivePageSize(reqURL), users.Page.Next)
+	//
+	// listUsers serves both callers, so name which list this was -- that is the
+	// distinction the incident turned on.
+	roleFilter := role
+	if roleFilter == "" {
+		roleFilter = "(unfiltered)"
+	}
+	warnIfTruncatedPage(ctx, usersEndpoint, len(users.Users), effectivePageSize(reqURL), users.Page.Next,
+		zap.String("role", roleFilter))
 	rv := &UsersResponse{
 		Users:      users.Users,
 		Pagination: users.Page.Next,

@@ -2,8 +2,11 @@ package client
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
+	"sync/atomic"
 	"testing"
 
 	"google.golang.org/grpc/codes"
@@ -57,13 +60,12 @@ func TestListUsers404IsNotPreservableCode(t *testing.T) {
 // mid-pagination 404 truncates the sync.
 func TestListUsers404OnCursorPageIsNotPreservableCode(t *testing.T) {
 	ctx := context.Background()
-	var n int
+	var n atomic.Int32
 
 	var server *httptest.Server
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		n++
 		w.Header().Set("Content-Type", "application/json")
-		if n == 1 {
+		if n.Add(1) == 1 {
 			_, _ = w.Write([]byte(`{"data":[{"id":"u1","email":"a@b.com","first_name":"A","last_name":"B","status":"USER_ACTIVE","role":"BUSINESS_USER"}],` +
 				`"page":{"next":"` + server.URL + `/developer/v1/users?start=cursor-1"}}`))
 			return
@@ -131,5 +133,112 @@ func TestEffectivePageSize(t *testing.T) {
 		if got := effectivePageSize(tc.url); got != tc.want {
 			t.Errorf("effectivePageSize(%q) = %d, want %d", tc.url, got, tc.want)
 		}
+	}
+}
+
+// Re-coding must set the code without flattening the chain, so errors.As can
+// still reach the uhttp cause and the original 404 detail survives for logs.
+func TestListUsers404PreservesErrorChain(t *testing.T) {
+	ctx := context.Background()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":{"message":"not found"}}`))
+	}))
+	defer server.Close()
+
+	c, err := New(ctx, Token{AccessToken: "token"}, server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, err = c.ListUsers(ctx, "")
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if got := status.Code(err); got != codes.Internal {
+		t.Fatalf("status code = %v, want Internal: %v", got, err)
+	}
+
+	// The joined cause is still walkable rather than collapsed into a string.
+	var unwrapped interface{ GRPCStatus() *status.Status }
+	if !errors.As(err, &unwrapped) {
+		t.Error("expected a gRPC status to be reachable via errors.As")
+	}
+	if !strings.Contains(err.Error(), "404") {
+		t.Errorf("expected the original 404 detail to survive, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "never a benign empty result") {
+		t.Errorf("expected the re-coding message, got: %v", err)
+	}
+}
+
+// The audit-log endpoint is deliberately excluded from re-coding: it feeds the
+// event feed, where no partial c1z is at stake, and a 404 there is a plausible
+// tenant-configuration signal rather than a connector fault.
+func TestListAuditLogEvents404StaysNotFound(t *testing.T) {
+	ctx := context.Background()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":{"message":"audit logs not enabled"}}`))
+	}))
+	defer server.Close()
+
+	c, err := New(ctx, Token{AccessToken: "token"}, server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, _, _, err = c.ListAuditLogEvents(ctx, &AuditLogEventsRequest{}, ""); err == nil {
+		t.Fatal("expected an error")
+	}
+	if got := status.Code(err); got != codes.NotFound {
+		t.Errorf("status code = %v, want NotFound: %v", got, err)
+	}
+}
+
+// Vendor agreements are on the sync path, so they do get re-coded.
+func TestListVendorAgreements404IsNotPreservableCode(t *testing.T) {
+	ctx := context.Background()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":{"message":"not found"}}`))
+	}))
+	defer server.Close()
+
+	c, err := New(ctx, Token{AccessToken: "token"}, server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, _, err = c.ListVendorAgreements(ctx, &VendorAgreementsListRequest{}, ""); err == nil {
+		t.Fatal("expected an error")
+	}
+	if got := status.Code(err); got != codes.Internal {
+		t.Errorf("status code = %v, want Internal: %v", got, err)
+	}
+}
+
+func TestListVendors404IsNotPreservableCode(t *testing.T) {
+	ctx := context.Background()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":{"message":"not found"}}`))
+	}))
+	defer server.Close()
+
+	c, err := New(ctx, Token{AccessToken: "token"}, server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, _, err = c.ListVendors(ctx, ""); err == nil {
+		t.Fatal("expected an error")
+	}
+	if got := status.Code(err); got != codes.Internal {
+		t.Errorf("status code = %v, want Internal: %v", got, err)
 	}
 }
