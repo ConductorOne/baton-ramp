@@ -46,7 +46,7 @@ func (c *Client) ListVendorAgreements(
 		req = &reqCopy
 	}
 	list := &VendorAgreementsList{}
-	ratelimitData, err := c.queryWithBody(ctx, http.MethodPost, reqURL, req, list)
+	ratelimitData, err := c.queryCollection(ctx, http.MethodPost, reqURL, req, list)
 	if err != nil {
 		return nil, ratelimitData, fmt.Errorf("baton-ramp: error listing vendor agreements: %w", err)
 	}

@@ -54,10 +54,17 @@ func (c *Client) listUsers(ctx context.Context, pagination string, role string) 
 		}
 	}
 
-	ratelimitData, err := c.query(ctx, http.MethodGet, reqURL, users)
+	ratelimitData, err := c.queryCollection(ctx, http.MethodGet, reqURL, nil, users)
 	if err != nil {
 		return nil, ratelimitData, fmt.Errorf("ramp-client: error listing users %w", err)
 	}
+	// Ramp has been observed returning a full page with an empty page.next
+	// while more users existed: an unfiltered list stopped after 100 of 158,
+	// with no cursor and no error, while the role-filtered lists in the same
+	// sync saw all 158. Nothing in a single response distinguishes that from a
+	// collection holding exactly page_size records, so this reports the shape
+	// rather than failing on it.
+	warnIfTruncatedPage(ctx, usersEndpoint, len(users.Users), effectivePageSize(reqURL), users.Page.Next)
 	rv := &UsersResponse{
 		Users:      users.Users,
 		Pagination: users.Page.Next,

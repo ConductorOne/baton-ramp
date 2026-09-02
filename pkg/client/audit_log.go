@@ -53,7 +53,7 @@ func (c *Client) ListAuditLogEvents(
 		return nil, "", nil, err
 	}
 	resp := &AuditLogEventsList{}
-	ratelimitData, err := c.query(ctx, http.MethodGet, reqURL, resp)
+	ratelimitData, err := c.queryCollection(ctx, http.MethodGet, reqURL, nil, resp)
 	if err != nil {
 		return nil, "", ratelimitData, fmt.Errorf("baton-ramp: error listing audit log events: %w", err)
 	}
