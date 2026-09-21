@@ -40,11 +40,11 @@ baton resources
 
 ```
 # Access token auth
-docker run --rm -v $(pwd):/out -e BATON_TOKEN=<your-ramp-token> ghcr.io/conductorone/baton-ramp:latest -f "/out/sync.c1z"
+docker run --rm -v $(pwd):/out -e BATON_TOKEN=<your-ramp-token> public.ecr.aws/conductorone/baton-ramp:latest -f "/out/sync.c1z"
 docker run --rm -v $(pwd):/out ghcr.io/conductorone/baton:latest -f "/out/sync.c1z" resources
 
 # OAuth 2.0 client credentials
-docker run --rm -v $(pwd):/out -e BATON_RAMP_CLIENT_ID=<client-id> -e BATON_RAMP_CLIENT_SECRET=<client-secret> ghcr.io/conductorone/baton-ramp:latest -f "/out/sync.c1z"
+docker run --rm -v $(pwd):/out -e BATON_RAMP_CLIENT_ID=<client-id> -e BATON_RAMP_CLIENT_SECRET=<client-secret> public.ecr.aws/conductorone/baton-ramp:latest -f "/out/sync.c1z"
 docker run --rm -v $(pwd):/out ghcr.io/conductorone/baton:latest -f "/out/sync.c1z" resources
 ```
 
