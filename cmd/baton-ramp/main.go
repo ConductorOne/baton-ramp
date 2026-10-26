@@ -18,6 +18,7 @@ import (
 	"github.com/conductorone/baton-sdk/pkg/types"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 	"go.uber.org/zap"
+	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
 )
 
@@ -44,21 +45,24 @@ const (
 
 var baseRampOAuthScopes = []string{usersReadScope, vendorsReadScope}
 
-// provisioningRampOAuthScopes are requested only when provisioning is enabled.
-var provisioningRampOAuthScopes = []string{usersWriteScope, vendorsWriteScope}
-
-// buildOAuthScopes returns the OAuth scopes for the connector based on the
-// resolved config.
-func buildOAuthScopes(cc *cfg.Ramp) []string {
-	scopes := make([]string, 0, len(baseRampOAuthScopes)+len(provisioningRampOAuthScopes)+1)
+// readScopes returns the OAuth scopes used for sync, validation and the event feed.
+func readScopes(cc *cfg.Ramp) []string {
+	scopes := make([]string, 0, len(baseRampOAuthScopes)+1)
 	scopes = append(scopes, baseRampOAuthScopes...)
-	if cc.Provisioning {
-		scopes = append(scopes, provisioningRampOAuthScopes...)
-	}
 	if cc.AuditLogEvents {
 		scopes = append(scopes, auditLogsScope)
 	}
 	return scopes
+}
+
+// usersWriteScopes returns the read scopes plus users:write.
+func usersWriteScopes(cc *cfg.Ramp) []string {
+	return append(readScopes(cc), usersWriteScope)
+}
+
+// vendorsWriteScopes returns the read scopes plus vendors:write.
+func vendorsWriteScopes(cc *cfg.Ramp) []string {
+	return append(readScopes(cc), vendorsWriteScope)
 }
 
 func vendorAgreementEnabled(resourceTypeIDs []string) bool {
@@ -114,13 +118,21 @@ func getConnector(ctx context.Context, cc *cfg.Ramp, runTimeOpts cli.RunTimeOpts
 	var authOpt connector.Option
 	switch authMethod {
 	case cfg.ClientCredentialsGroup:
-		ccCfg := &clientcredentials.Config{
-			ClientID:     cc.RampClientId,
-			ClientSecret: cc.RampClientSecret,
-			TokenURL:     client.TokenURL(cc.RampBaseUrl),
-			Scopes:       buildOAuthScopes(cc),
+		tokenSource := func(scopes []string) oauth2.TokenSource {
+			ccCfg := &clientcredentials.Config{
+				ClientID:     cc.RampClientId,
+				ClientSecret: cc.RampClientSecret,
+				TokenURL:     client.TokenURL(cc.RampBaseUrl),
+				Scopes:       scopes,
+			}
+			return ccCfg.TokenSource(ctx)
 		}
-		authOpt = connector.WithTokenSource(ctx, ccCfg.TokenSource(ctx))
+		authOpt = connector.WithTokenSources(ctx, client.TokenSources{
+			Read:         tokenSource(readScopes(cc)),
+			UsersWrite:   tokenSource(usersWriteScopes(cc)),
+			VendorsWrite: tokenSource(vendorsWriteScopes(cc)),
+			ReadScopes:   readScopes(cc),
+		})
 	case cfg.AccessTokenGroup:
 		authOpt = connector.WithToken(ctx, cc.Token)
 	default:

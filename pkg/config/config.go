@@ -33,9 +33,9 @@ var (
 		field.WithDefaultValue("https://api.ramp.com"),
 	)
 
-	// Provisioning re-exports the SDK's default provisioning switch so OAuth
-	// client-credentials auth can request write scopes only when provisioning
-	// is enabled. The SDK still owns the runtime provisioning behavior.
+	// Provisioning re-exports the SDK's default provisioning switch.
+	//
+	// Deprecated: OAuth write scopes no longer depend on it; the SDK still owns the runtime provisioning behavior.
 	Provisioning = field.BoolField("provisioning",
 		field.WithShortHand("p"),
 		field.WithDescription("This must be set in order for provisioning actions to be enabled"),

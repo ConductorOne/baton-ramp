@@ -82,8 +82,10 @@ func addUsersListParams(reqURL string, role string) (string, error) {
 }
 
 // POST https://api.ramp.com/developer/v1/users/deferred
+// Required scope: users:write.
 // https://docs.ramp.com/developer-api/v1/api/users#post-developer-v1-users-deferred
 func (c *Client) CreateUser(ctx context.Context, req *CreateUserRequest) (*DeferredTaskResponse, *v2.RateLimitDescription, error) {
+	ctx = withScopeClass(ctx, scopeClassUsersWrite)
 	if req.IdempotencyKey == "" {
 		req.IdempotencyKey = uuid.New().String()
 	}
@@ -100,8 +102,10 @@ func (c *Client) CreateUser(ctx context.Context, req *CreateUserRequest) (*Defer
 }
 
 // PATCH https://api.ramp.com/developer/v1/users/{user_id}/deactivate
+// Required scope: users:write.
 // https://docs.ramp.com/developer-api/v1/api/users#patch-developer-v1-users-user_id-deactivate
 func (c *Client) DeactivateUser(ctx context.Context, userID string) (*v2.RateLimitDescription, error) {
+	ctx = withScopeClass(ctx, scopeClassUsersWrite)
 	reqURL, err := c.newUnPaginatedURL(fmt.Sprintf("%s/%s/deactivate", usersEndpoint, userID))
 	if err != nil {
 		return nil, err
@@ -114,8 +118,10 @@ func (c *Client) DeactivateUser(ctx context.Context, userID string) (*v2.RateLim
 }
 
 // PATCH https://api.ramp.com/developer/v1/users/{user_id}/reactivate
+// Required scope: users:write.
 // https://docs.ramp.com/developer-api/v1/api/users#patch-developer-v1-users-user_id-reactivate
 func (c *Client) ReactivateUser(ctx context.Context, userID string) (*v2.RateLimitDescription, error) {
+	ctx = withScopeClass(ctx, scopeClassUsersWrite)
 	reqURL, err := c.newUnPaginatedURL(fmt.Sprintf("%s/%s/reactivate", usersEndpoint, userID))
 	if err != nil {
 		return nil, err
