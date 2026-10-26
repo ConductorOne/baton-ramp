@@ -37,9 +37,9 @@ func (o *userBuilder) ResourceType(ctx context.Context) *v2.ResourceType {
 }
 
 func userResource(u *client.User) (*v2.Resource, error) {
-	status := v2.UserTrait_Status_STATUS_ENABLED
+	status := v2.Status_RESOURCE_STATUS_ENABLED
 	if u.Status != "USER_ACTIVE" && u.Status != "USER_ONBOARDING" {
-		status = v2.UserTrait_Status_STATUS_DISABLED
+		status = v2.Status_RESOURCE_STATUS_DISABLED
 	}
 
 	return resourceSdk.NewResource(
@@ -48,9 +48,9 @@ func userResource(u *client.User) (*v2.Resource, error) {
 		u.ID,
 		resourceSdk.WithUserTrait(
 			resourceSdk.WithEmail(u.Email, true),
-			resourceSdk.WithStatus(status),
 			resourceSdk.WithUserLogin(u.Email),
 		),
+		resourceSdk.WithResourceStatus(status, ""),
 	)
 }
 
