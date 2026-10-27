@@ -18,9 +18,19 @@ type lookupResponse struct {
 
 var (
 	noUsersLookup       = lookupResponse{status: http.StatusOK, body: `{"data":[],"page":{"next":""}}`}
-	existingUsersLookup = lookupResponse{status: http.StatusOK, body: `{"data":[{"id":"user-1","email":"Jane@Example.com","first_name":"Jane","last_name":"Doe","role":"BUSINESS_USER","status":"INVITE_PENDING"}],"page":{"next":""}}`}
-	notFoundLookup      = lookupResponse{status: http.StatusNotFound}
-	forbiddenLookup     = lookupResponse{status: http.StatusForbidden}
+	existingUsersLookup = lookupResponse{status: http.StatusOK, body: `{
+		"data": [{
+			"id": "user-1",
+			"email": "Jane@Example.com",
+			"first_name": "Jane",
+			"last_name": "Doe",
+			"role": "BUSINESS_USER",
+			"status": "INVITE_PENDING"
+		}],
+		"page": {"next": ""}
+	}`}
+	notFoundLookup  = lookupResponse{status: http.StatusNotFound}
+	forbiddenLookup = lookupResponse{status: http.StatusForbidden}
 )
 
 type createAccountTestServer struct {
