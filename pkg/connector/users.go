@@ -37,9 +37,9 @@ func (o *userBuilder) ResourceType(ctx context.Context) *v2.ResourceType {
 }
 
 func userResource(u *client.User) (*v2.Resource, error) {
-	status := v2.UserTrait_Status_STATUS_ENABLED
+	status := v2.Status_RESOURCE_STATUS_ENABLED
 	if u.Status != "USER_ACTIVE" && u.Status != "USER_ONBOARDING" {
-		status = v2.UserTrait_Status_STATUS_DISABLED
+		status = v2.Status_RESOURCE_STATUS_DISABLED
 	}
 
 	return resourceSdk.NewResource(
@@ -48,9 +48,9 @@ func userResource(u *client.User) (*v2.Resource, error) {
 		u.ID,
 		resourceSdk.WithUserTrait(
 			resourceSdk.WithEmail(u.Email, true),
-			resourceSdk.WithStatus(status),
 			resourceSdk.WithUserLogin(u.Email),
 		),
+		resourceSdk.WithResourceStatus(status, ""),
 	)
 }
 
@@ -150,6 +150,24 @@ func (o *userBuilder) CreateAccount(
 		return nil, nil, nil, grpcstatus.Errorf(codes.InvalidArgument,
 			"ramp-connector: invalid role %q, must be one of AUDITOR, BUSINESS_ADMIN, BUSINESS_BOOKKEEPER, BUSINESS_USER, GUEST_USER, IT_ADMIN",
 			role)
+	}
+
+	existingUser, ratelimitData, err := o.client.FindUserByEmail(ctx, email)
+	annos.WithRateLimiting(ratelimitData)
+	if grpcstatus.Code(err) == codes.NotFound {
+		ctxzap.Extract(ctx).Debug("ramp-connector: user lookup by email returned not found", zap.Error(err))
+	} else if err != nil {
+		return nil, nil, annos, fmt.Errorf("ramp-connector: failed to look up existing user: %w", err)
+	}
+	if existingUser != nil {
+		resource, err := userResource(existingUser)
+		if err != nil {
+			return nil, nil, annos, fmt.Errorf("ramp-connector: failed to create resource for user %s: %w", existingUser.ID, err)
+		}
+		return &v2.CreateAccountResponse_AlreadyExistsResult{
+			Resource:              resource,
+			IsCreateAccountResult: true,
+		}, nil, annos, nil
 	}
 
 	req := &client.CreateUserRequest{

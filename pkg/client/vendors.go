@@ -76,6 +76,7 @@ func (c *Client) GetVendor(ctx context.Context, vendorID string) (*Vendor, *v2.R
 // https://docs.ramp.com/developer-api/v1/api/vendors#patch-developer-v1-vendors-id
 // Sets or clears vendor_owner_id. Pass empty string ownerID to clear the owner.
 func (c *Client) UpdateVendorOwner(ctx context.Context, vendorID, ownerID string) (*v2.RateLimitDescription, error) {
+	ctx = withScopeClass(ctx, scopeClassVendorsWrite)
 	reqURL, err := c.newUnPaginatedURL(fmt.Sprintf("%s/%s", vendorsPath, vendorID))
 	if err != nil {
 		return nil, err

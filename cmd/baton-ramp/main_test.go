@@ -9,40 +9,32 @@ import (
 	cfg "github.com/conductorone/baton-ramp/pkg/config"
 )
 
-func TestBuildOAuthScopes(t *testing.T) {
-	baseScopes := buildOAuthScopes(&cfg.Ramp{})
-	for _, scope := range []string{usersReadScope, vendorsReadScope} {
-		if !slices.Contains(baseScopes, scope) {
-			t.Fatalf("base scopes missing %q: %v", scope, baseScopes)
+func TestScopeBuilders(t *testing.T) {
+	for _, auditLogEvents := range []bool{false, true} {
+		cc := &cfg.Ramp{AuditLogEvents: auditLogEvents}
+		wantRead := []string{usersReadScope, vendorsReadScope}
+		if auditLogEvents {
+			wantRead = append(wantRead, auditLogsScope)
 		}
-	}
-	for _, scope := range []string{usersWriteScope, vendorsWriteScope, auditLogsScope} {
-		if slices.Contains(baseScopes, scope) {
-			t.Fatalf("base scopes should not include %q: %v", scope, baseScopes)
-		}
-	}
 
-	provisioningScopes := buildOAuthScopes(&cfg.Ramp{Provisioning: true})
-	for _, scope := range []string{usersWriteScope, vendorsWriteScope} {
-		if !slices.Contains(provisioningScopes, scope) {
-			t.Fatalf("provisioning scopes missing %q: %v", scope, provisioningScopes)
+		read := readScopes(cc)
+		if !slices.Equal(read, wantRead) {
+			t.Fatalf("audit=%v: read scopes = %v, want %v", auditLogEvents, read, wantRead)
 		}
-	}
 
-	auditLogScopes := buildOAuthScopes(&cfg.Ramp{AuditLogEvents: true})
-	if !slices.Contains(auditLogScopes, auditLogsScope) {
-		t.Fatalf("audit-log scopes missing %q: %v", auditLogsScope, auditLogScopes)
-	}
-	for _, scope := range []string{usersWriteScope, vendorsWriteScope} {
-		if slices.Contains(auditLogScopes, scope) {
-			t.Fatalf("audit-log scopes should not include %q without provisioning: %v", scope, auditLogScopes)
+		usersWrite := usersWriteScopes(cc)
+		if want := append(slices.Clone(wantRead), usersWriteScope); !slices.Equal(usersWrite, want) {
+			t.Fatalf("audit=%v: users write scopes = %v, want %v", auditLogEvents, usersWrite, want)
 		}
-	}
 
-	fullScopes := buildOAuthScopes(&cfg.Ramp{Provisioning: true, AuditLogEvents: true})
-	for _, scope := range []string{usersReadScope, vendorsReadScope, usersWriteScope, vendorsWriteScope, auditLogsScope} {
-		if !slices.Contains(fullScopes, scope) {
-			t.Fatalf("full scopes missing %q: %v", scope, fullScopes)
+		vendorsWrite := vendorsWriteScopes(cc)
+		if want := append(slices.Clone(wantRead), vendorsWriteScope); !slices.Equal(vendorsWrite, want) {
+			t.Fatalf("audit=%v: vendors write scopes = %v, want %v", auditLogEvents, vendorsWrite, want)
+		}
+
+		usersWrite[0] = "mutated"
+		if slices.Contains(vendorsWrite, "mutated") || slices.Contains(readScopes(cc), "mutated") {
+			t.Fatalf("audit=%v: scope builders share a backing array", auditLogEvents)
 		}
 	}
 }

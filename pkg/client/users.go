@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/google/uuid"
@@ -82,8 +83,10 @@ func addUsersListParams(reqURL string, role string) (string, error) {
 }
 
 // POST https://api.ramp.com/developer/v1/users/deferred
+// Required scope: users:write.
 // https://docs.ramp.com/developer-api/v1/api/users#post-developer-v1-users-deferred
 func (c *Client) CreateUser(ctx context.Context, req *CreateUserRequest) (*DeferredTaskResponse, *v2.RateLimitDescription, error) {
+	ctx = withScopeClass(ctx, scopeClassUsersWrite)
 	if req.IdempotencyKey == "" {
 		req.IdempotencyKey = uuid.New().String()
 	}
@@ -99,9 +102,41 @@ func (c *Client) CreateUser(ctx context.Context, req *CreateUserRequest) (*Defer
 	return task, ratelimitData, nil
 }
 
+// GET https://api.ramp.com/developer/v1/users?email={email}
+// Required scope: users:read.
+// https://docs.ramp.com/developer-api/v1/api/users#get-developer-v1-users
+// Returns nil when no user has the email.
+func (c *Client) FindUserByEmail(ctx context.Context, email string) (*User, *v2.RateLimitDescription, error) {
+	reqURL, err := c.newUnPaginatedURL(usersEndpoint)
+	if err != nil {
+		return nil, nil, err
+	}
+	parsedURL, err := url.Parse(reqURL)
+	if err != nil {
+		return nil, nil, fmt.Errorf("ramp-client: failed to parse users URL: %w", err)
+	}
+	query := parsedURL.Query()
+	query.Set("email", email)
+	parsedURL.RawQuery = query.Encode()
+
+	users := &UsersList{}
+	ratelimitData, err := c.queryUncached(ctx, http.MethodGet, parsedURL.String(), users)
+	if err != nil {
+		return nil, ratelimitData, fmt.Errorf("ramp-client: error finding user by email: %w", err)
+	}
+	for _, u := range users.Users {
+		if strings.EqualFold(u.Email, email) {
+			return u, ratelimitData, nil
+		}
+	}
+	return nil, ratelimitData, nil
+}
+
 // PATCH https://api.ramp.com/developer/v1/users/{user_id}/deactivate
+// Required scope: users:write.
 // https://docs.ramp.com/developer-api/v1/api/users#patch-developer-v1-users-user_id-deactivate
 func (c *Client) DeactivateUser(ctx context.Context, userID string) (*v2.RateLimitDescription, error) {
+	ctx = withScopeClass(ctx, scopeClassUsersWrite)
 	reqURL, err := c.newUnPaginatedURL(fmt.Sprintf("%s/%s/deactivate", usersEndpoint, userID))
 	if err != nil {
 		return nil, err
@@ -114,8 +149,10 @@ func (c *Client) DeactivateUser(ctx context.Context, userID string) (*v2.RateLim
 }
 
 // PATCH https://api.ramp.com/developer/v1/users/{user_id}/reactivate
+// Required scope: users:write.
 // https://docs.ramp.com/developer-api/v1/api/users#patch-developer-v1-users-user_id-reactivate
 func (c *Client) ReactivateUser(ctx context.Context, userID string) (*v2.RateLimitDescription, error) {
+	ctx = withScopeClass(ctx, scopeClassUsersWrite)
 	reqURL, err := c.newUnPaginatedURL(fmt.Sprintf("%s/%s/reactivate", usersEndpoint, userID))
 	if err != nil {
 		return nil, err

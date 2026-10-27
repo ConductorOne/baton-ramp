@@ -47,7 +47,15 @@ func (c *Client) query(ctx context.Context, method string, requestURL string, re
 	return c.queryWithBody(ctx, method, requestURL, nil, res)
 }
 
+func (c *Client) queryUncached(ctx context.Context, method string, requestURL string, res any) (*v2.RateLimitDescription, error) {
+	return c.doQuery(ctx, method, requestURL, nil, res, true)
+}
+
 func (c *Client) queryWithBody(ctx context.Context, method, requestURL string, body any, res any) (*v2.RateLimitDescription, error) {
+	return c.doQuery(ctx, method, requestURL, body, res, false)
+}
+
+func (c *Client) doQuery(ctx context.Context, method, requestURL string, body any, res any, noCache bool) (*v2.RateLimitDescription, error) {
 	var bodyReader io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)
@@ -66,6 +74,9 @@ func (c *Client) queryWithBody(ctx context.Context, method, requestURL string, b
 	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
+	}
+	if noCache {
+		req.Header.Set("Cache-Control", "no-cache")
 	}
 
 	var ratelimitData v2.RateLimitDescription

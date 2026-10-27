@@ -15,14 +15,13 @@ import (
 
 type Client struct {
 	*uhttp.BaseHttpClient
-	TokenSource oauth2.TokenSource
-	baseURL     string
+	baseURL string
 }
 
 type openGraphHttpTransport struct {
-	base        http.RoundTripper
-	rateLimit   *v2.RateLimitDescription
-	tokenSource oauth2.TokenSource
+	base         http.RoundTripper
+	rateLimit    *v2.RateLimitDescription
+	tokenSources TokenSources
 }
 
 type Token struct {
@@ -39,17 +38,21 @@ func (c Token) Token() (*oauth2.Token, error) {
 }
 
 func New(ctx context.Context, tokenSource oauth2.TokenSource, baseURL string) (*Client, error) {
+	return NewWithTokenSources(ctx, TokenSources{Read: tokenSource}, baseURL)
+}
+
+// NewWithTokenSources builds a client that picks the token source per request based on the required scope class.
+func NewWithTokenSources(ctx context.Context, sources TokenSources, baseURL string) (*Client, error) {
 	httpClient, err := uhttp.NewClient(ctx, uhttp.WithLogger(true, ctxzap.Extract(ctx)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP client: %w", err)
 	}
 	httpClient.Transport = &openGraphHttpTransport{
-		base:        httpClient.Transport,
-		tokenSource: tokenSource,
+		base:         httpClient.Transport,
+		tokenSources: sources,
 	}
 	return &Client{
 		BaseHttpClient: uhttp.NewBaseHttpClient(httpClient),
-		TokenSource:    tokenSource,
 		baseURL:        baseURL,
 	}, nil
 }
@@ -57,10 +60,10 @@ func New(ctx context.Context, tokenSource oauth2.TokenSource, baseURL string) (*
 func (t *openGraphHttpTransport) RoundTrip(request *http.Request) (*http.Response, error) {
 	t.rateLimit = nil // clear previous
 
-	// Get fresh token for each request
-	token, err := t.tokenSource.Token()
+	class := scopeClassFrom(request.Context())
+	token, err := t.tokenSources.forClass(class).Token()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get token: %w", err)
+		return nil, classifyTokenError(err, class, t.tokenSources.ReadScopes)
 	}
 
 	// Set Authorization header with fresh token

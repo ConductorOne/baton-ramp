@@ -31,7 +31,7 @@ The current Ramp user list/fetch role enum has expanded beyond the original v1 s
 
 | Ramp API surface | Used by connector | Support | Notes |
 |---|---:|---|---|
-| `GET /developer/v1/users` | Yes | Full for users and role grants | Lists users, builds user resources, and derives role grants from `role`. |
+| `GET /developer/v1/users` | Yes | Full for users and role grants | Lists users, builds user resources, and derives role grants from `role`. Account creation also filters by `email` to return an existing user instead of creating a duplicate. |
 | `GET /developer/v1/users/{user_id}` | No | Missing | Not needed for sync because list returns the same user fields used by the connector. |
 | `POST /developer/v1/users/deferred` | Yes | Partial | Supports account creation with `email`, `first_name`, `last_name`, and `role`. Other create fields are not exposed in the account creation schema. |
 | `GET /developer/v1/users/deferred/status/{task_id}` | No | Missing | Connector returns action-required after invite; it does not poll deferred task status. |

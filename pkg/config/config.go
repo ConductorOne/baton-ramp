@@ -33,16 +33,6 @@ var (
 		field.WithDefaultValue("https://api.ramp.com"),
 	)
 
-	// Provisioning re-exports the SDK's default provisioning switch so OAuth
-	// client-credentials auth can request write scopes only when provisioning
-	// is enabled. The SDK still owns the runtime provisioning behavior.
-	Provisioning = field.BoolField("provisioning",
-		field.WithShortHand("p"),
-		field.WithDescription("This must be set in order for provisioning actions to be enabled"),
-		field.WithDefaultValue(false),
-		field.WithExportTarget(field.ExportTargetCLIOnly),
-	).ExportAs(field.ExportTargetCLIOnly)
-
 	AuditLogEvents = field.BoolField("audit-log-events",
 		field.WithDisplayName("Sync audit log events"),
 		field.WithDescription(
@@ -52,7 +42,7 @@ var (
 		field.WithDefaultValue(false),
 	)
 
-	ConfigurationFields = []field.SchemaField{Token, RampClientID, RampClientSecret, RampBaseURL, Provisioning, AuditLogEvents}
+	ConfigurationFields = []field.SchemaField{Token, RampClientID, RampClientSecret, RampBaseURL, AuditLogEvents}
 
 	// Field groups gate which fields are validated per selected auth method.
 	// No top-level relationship constraints: FieldsMutuallyExclusive rejects

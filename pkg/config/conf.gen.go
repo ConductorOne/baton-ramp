@@ -8,7 +8,6 @@ type Ramp struct {
 	RampClientId     string `mapstructure:"ramp-client-id"`
 	RampClientSecret string `mapstructure:"ramp-client-secret"`
 	RampBaseUrl      string `mapstructure:"ramp-base-url"`
-	Provisioning     bool   `mapstructure:"provisioning"`
 	AuditLogEvents   bool   `mapstructure:"audit-log-events"`
 }
 
