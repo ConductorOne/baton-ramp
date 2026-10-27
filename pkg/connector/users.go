@@ -152,6 +152,24 @@ func (o *userBuilder) CreateAccount(
 			role)
 	}
 
+	existingUser, ratelimitData, err := o.client.FindUserByEmail(ctx, email)
+	annos.WithRateLimiting(ratelimitData)
+	if grpcstatus.Code(err) == codes.NotFound {
+		ctxzap.Extract(ctx).Debug("ramp-connector: user lookup by email returned not found", zap.Error(err))
+	} else if err != nil {
+		return nil, nil, annos, fmt.Errorf("ramp-connector: failed to look up existing user: %w", err)
+	}
+	if existingUser != nil {
+		resource, err := userResource(existingUser)
+		if err != nil {
+			return nil, nil, annos, fmt.Errorf("ramp-connector: failed to create resource for user %s: %w", existingUser.ID, err)
+		}
+		return &v2.CreateAccountResponse_AlreadyExistsResult{
+			Resource:              resource,
+			IsCreateAccountResult: true,
+		}, nil, annos, nil
+	}
+
 	req := &client.CreateUserRequest{
 		Email:     email,
 		FirstName: firstName,

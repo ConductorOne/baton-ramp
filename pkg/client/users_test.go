@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestListUsersByRoleAddsRoleAndPageSizeToCursorPages(t *testing.T) {
@@ -90,5 +93,40 @@ func TestListUsersAddsPageSizeWithoutRole(t *testing.T) {
 	}
 	if _, _, err := c.ListUsers(ctx, ""); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestFindUserByEmailReturnsNotFoundError(t *testing.T) {
+	ctx := context.Background()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	c, err := New(ctx, Token{AccessToken: "token"}, server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, err = c.FindUserByEmail(ctx, "jane@example.com")
+	if got := status.Code(err); got != codes.NotFound {
+		t.Fatalf("error code = %s, want NotFound (err: %v)", got, err)
+	}
+}
+
+func TestFindUserByEmailReturnsOtherErrors(t *testing.T) {
+	ctx := context.Background()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer server.Close()
+
+	c, err := New(ctx, Token{AccessToken: "token"}, server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, _, err := c.FindUserByEmail(ctx, "jane@example.com"); err == nil {
+		t.Fatal("expected error on 403")
 	}
 }
