@@ -65,7 +65,7 @@ func scopeClassFrom(ctx context.Context) scopeClass {
 func classifyTokenError(err error, class scopeClass, readScopes []string) error {
 	var retrieveErr *oauth2.RetrieveError
 	if !errors.As(err, &retrieveErr) {
-		return fmt.Errorf("baton-ramp: failed to get token: %w", err)
+		return fmt.Errorf("failed to get token: %w", err)
 	}
 
 	unauthorized := retrieveErr.Response != nil && retrieveErr.Response.StatusCode == http.StatusUnauthorized
@@ -79,19 +79,19 @@ func classifyTokenError(err error, class scopeClass, readScopes []string) error 
 			return missingWriteScopeError(vendorsWriteScope, "granting and revoking vendor ownership", err)
 		default:
 			return uhttp.WrapErrors(codes.FailedPrecondition,
-				fmt.Sprintf("baton-ramp: Ramp OAuth app is missing one of the required read scopes: %s", strings.Join(readScopes, " ")),
+				fmt.Sprintf("Ramp OAuth app is missing one of the required read scopes: %s", strings.Join(readScopes, " ")),
 				err)
 		}
 	case retrieveErr.ErrorCode == "invalid_client" || unauthorized:
-		return uhttp.WrapErrors(codes.Unauthenticated, "baton-ramp: Ramp rejected the OAuth client credentials", err)
+		return uhttp.WrapErrors(codes.Unauthenticated, "Ramp rejected the OAuth client credentials", err)
 	default:
-		return fmt.Errorf("baton-ramp: failed to get token: %w", err)
+		return fmt.Errorf("failed to get token: %w", err)
 	}
 }
 
 func missingWriteScopeError(scope, operations string, err error) error {
 	return uhttp.WrapErrors(codes.FailedPrecondition,
-		fmt.Sprintf("baton-ramp: Ramp OAuth app is not configured for scope %q; add it to the app in Ramp (Settings > Developers) to enable %s", scope, operations),
+		fmt.Sprintf("Ramp OAuth app is not configured for scope %q; add it to the app in Ramp (Settings > Developers) to enable %s", scope, operations),
 		err)
 }
 
