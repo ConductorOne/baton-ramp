@@ -15,8 +15,7 @@ import (
 
 type Client struct {
 	*uhttp.BaseHttpClient
-	TokenSource oauth2.TokenSource
-	baseURL     string
+	baseURL string
 }
 
 type openGraphHttpTransport struct {
@@ -54,7 +53,6 @@ func NewWithTokenSources(ctx context.Context, sources TokenSources, baseURL stri
 	}
 	return &Client{
 		BaseHttpClient: uhttp.NewBaseHttpClient(httpClient),
-		TokenSource:    sources.Read,
 		baseURL:        baseURL,
 	}, nil
 }

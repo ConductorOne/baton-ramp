@@ -9,7 +9,6 @@ import (
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
-	"golang.org/x/oauth2"
 )
 
 type Connector struct {
@@ -22,7 +21,7 @@ type Connector struct {
 type Option func(*Connector) error
 
 // WithBaseURL overrides the default Ramp API base URL (e.g. https://demo-api.ramp.com for sandbox).
-// Must be applied before WithToken, WithTokenSource or WithTokenSources so they build the client against it.
+// Must be applied before WithToken or WithTokenSources so they build the client against it.
 func WithBaseURL(baseURL string) Option {
 	return func(c *Connector) error {
 		c.baseURL = baseURL
@@ -140,18 +139,6 @@ func (d *Connector) Validate(ctx context.Context) (annotations.Annotations, erro
 func WithToken(ctx context.Context, token string) Option {
 	return func(c *Connector) error {
 		client, err := client.New(ctx, client.Token{AccessToken: token}, c.baseURL)
-		if err != nil {
-			return fmt.Errorf("error creating ramp client: %w", err)
-		}
-		c.client = client
-		return nil
-	}
-}
-
-// WithTokenSource configures the connector to use a pre-configured token source.
-func WithTokenSource(ctx context.Context, tokenSource oauth2.TokenSource) Option {
-	return func(c *Connector) error {
-		client, err := client.New(ctx, tokenSource, c.baseURL)
 		if err != nil {
 			return fmt.Errorf("error creating ramp client: %w", err)
 		}
