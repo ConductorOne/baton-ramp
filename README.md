@@ -108,7 +108,6 @@ Available Commands:
 
 Flags:
       --audit-log-events                                 Enable Ramp audit-log polling for incremental sync events. Adds the audit_logs:read OAuth scope. Default off. ($BATON_AUDIT_LOG_EVENTS)
-      --provisioning-attributes                          Enable setting manager, department and location on Ramp user creation. Adds the departments:read and locations:read OAuth scopes — grant them to the Ramp OAuth app first. Default off. ($BATON_PROVISIONING_ATTRIBUTES)
       --auth-method string                               Authentication method: "access_token" or "client_credentials" ($BATON_AUTH_METHOD)
       --client-id string                                 The client ID used to authenticate with ConductorOne ($BATON_CLIENT_ID)
       --client-secret string                             The client secret used to authenticate with ConductorOne ($BATON_CLIENT_SECRET)
@@ -123,6 +122,7 @@ Flags:
       --log-level string                                 The log level: debug, info, warn, error ($BATON_LOG_LEVEL) (default "info")
       --otel-collector-endpoint string                   The endpoint of the OpenTelemetry collector to send observability data to ($BATON_OTEL_COLLECTOR_ENDPOINT)
   -p, --provisioning                                     This must be set in order for provisioning actions to be enabled ($BATON_PROVISIONING)
+      --provisioning-attributes                          Enable setting manager, department and location on Ramp user creation. Adds the departments:read and locations:read OAuth scopes — grant them to the Ramp OAuth app first. Default off. ($BATON_PROVISIONING_ATTRIBUTES)
       --ramp-base-url string                             Override the Ramp API base URL. Defaults to https://api.ramp.com. Use https://demo-api.ramp.com for sandbox. ($BATON_RAMP_BASE_URL) (default "https://api.ramp.com")
       --ramp-client-id string                            Ramp OAuth client ID — required when using client_credentials auth ($BATON_RAMP_CLIENT_ID)
       --ramp-client-secret string                        Ramp OAuth client secret — required when using client_credentials auth ($BATON_RAMP_CLIENT_SECRET)
