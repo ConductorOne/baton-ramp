@@ -211,7 +211,7 @@ func newAttributeTestBuilder(t *testing.T, ts *attributeTestServer) *userBuilder
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
-		case r.Method == "GET" && r.URL.Path == "/developer/v1/users":
+		case r.Method == http.MethodGet && r.URL.Path == "/developer/v1/users":
 			switch got := r.URL.Query().Get("email"); got {
 			case "jane@example.com", "manager@example.com", "ghost@example.com":
 			default:
@@ -225,7 +225,7 @@ func newAttributeTestBuilder(t *testing.T, ts *attributeTestServer) *userBuilder
 			}
 			w.WriteHeader(ts.lookupResponse.status)
 			_, _ = w.Write([]byte(ts.lookupResponse.body))
-		case r.Method == "POST" && r.URL.Path == "/developer/v1/users/deferred":
+		case r.Method == http.MethodPost && r.URL.Path == "/developer/v1/users/deferred":
 			if ts.createRateLimit > 0 {
 				w.Header().Set("X-RateLimit-Limit", strconv.Itoa(ts.createRateLimit))
 			}
@@ -237,22 +237,22 @@ func newAttributeTestBuilder(t *testing.T, ts *attributeTestServer) *userBuilder
 			ts.createBodies = append(ts.createBodies, string(body))
 			w.WriteHeader(http.StatusCreated)
 			_, _ = w.Write([]byte(`{"id":"task-1"}`))
-		case r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/developer/v1/departments/"):
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/developer/v1/departments/"):
 			if ts.deptRateLimit > 0 {
 				w.Header().Set("X-RateLimit-Limit", strconv.Itoa(ts.deptRateLimit))
 			}
 			ts.deptIDCalls++
 			w.WriteHeader(ts.deptByID.status)
 			_, _ = w.Write([]byte(ts.deptByID.body))
-		case r.Method == "GET" && r.URL.Path == "/developer/v1/departments":
+		case r.Method == http.MethodGet && r.URL.Path == "/developer/v1/departments":
 			ts.deptListCalls++
 			w.WriteHeader(ts.deptList.status)
 			_, _ = w.Write([]byte(ts.deptList.body))
-		case r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/developer/v1/locations/"):
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/developer/v1/locations/"):
 			ts.locIDCalls++
 			w.WriteHeader(ts.locByID.status)
 			_, _ = w.Write([]byte(ts.locByID.body))
-		case r.Method == "GET" && r.URL.Path == "/developer/v1/locations":
+		case r.Method == http.MethodGet && r.URL.Path == "/developer/v1/locations":
 			ts.locListCalls++
 			w.WriteHeader(ts.locList.status)
 			_, _ = w.Write([]byte(ts.locList.body))
@@ -509,7 +509,7 @@ func TestCreateAccountFlagOffWithFieldsSetFailsClosed(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
-		case r.Method == "GET" && r.URL.Path == "/developer/v1/users":
+		case r.Method == http.MethodGet && r.URL.Path == "/developer/v1/users":
 			ts.lookupCalls++
 			w.WriteHeader(ts.lookupResponse.status)
 			_, _ = w.Write([]byte(ts.lookupResponse.body))

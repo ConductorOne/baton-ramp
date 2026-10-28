@@ -13,7 +13,6 @@ import (
 func TestListDepartmentsPaginatesThroughNextToken(t *testing.T) {
 	ctx := context.Background()
 	var requests []*http.Request
-
 	var server *httptest.Server
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests = append(requests, r.Clone(ctx))
@@ -69,7 +68,6 @@ func TestListDepartmentsPaginatesThroughNextToken(t *testing.T) {
 func TestListLocationsPaginatesThroughNextToken(t *testing.T) {
 	ctx := context.Background()
 	var requests []*http.Request
-
 	var server *httptest.Server
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests = append(requests, r.Clone(ctx))
@@ -177,8 +175,7 @@ func TestGetLocationErrorPath(t *testing.T) {
 func TestGetDepartmentEscapesIDProbeValue(t *testing.T) {
 	ctx := context.Background()
 	var gotPath, gotQuery string
-	var server *httptest.Server
-	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.RequestURI
 		gotQuery = r.URL.RawQuery
 		w.Header().Set("Content-Type", "application/json")
@@ -209,8 +206,7 @@ func TestGetDepartmentEscapesIDProbeValue(t *testing.T) {
 func TestGetLocationEscapesIDProbeValue(t *testing.T) {
 	ctx := context.Background()
 	var gotPath, gotQuery string
-	var server *httptest.Server
-	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.RequestURI
 		gotQuery = r.URL.RawQuery
 		w.Header().Set("Content-Type", "application/json")

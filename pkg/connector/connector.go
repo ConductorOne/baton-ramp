@@ -94,68 +94,77 @@ func (d *Connector) Metadata(ctx context.Context) (*v2.ConnectorMetadata, error)
 		DisplayName: "Baton Ramp Connector",
 		Description: "This connector integrates with Ramp to manage users, roles, and vendors.",
 		AccountCreationSchema: &v2.ConnectorAccountCreationSchema{
-			FieldMap: map[string]*v2.ConnectorAccountCreationSchema_Field{
-				"email": {
-					DisplayName: "Email",
-					Required:    true,
-					Order:       1,
-					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
-						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+			FieldMap: func() map[string]*v2.ConnectorAccountCreationSchema_Field {
+				fields := map[string]*v2.ConnectorAccountCreationSchema_Field{
+					"email": {
+						DisplayName: "Email",
+						Required:    true,
+						Order:       1,
+						Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
+							StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+						},
 					},
-				},
-				"first_name": {
-					DisplayName: "First Name",
-					Required:    true,
-					Order:       2,
-					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
-						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+					"first_name": {
+						DisplayName: "First Name",
+						Required:    true,
+						Order:       2,
+						Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
+							StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+						},
 					},
-				},
-				"last_name": {
-					DisplayName: "Last Name",
-					Required:    true,
-					Order:       3,
-					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
-						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+					"last_name": {
+						DisplayName: "Last Name",
+						Required:    true,
+						Order:       3,
+						Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
+							StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+						},
 					},
-				},
-				"role": {
-					DisplayName: "Role",
-					Description: "One of: AUDITOR, BUSINESS_ADMIN, BUSINESS_BOOKKEEPER, BUSINESS_USER, GUEST_USER, IT_ADMIN",
-					Required:    true,
-					Order:       4,
-					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
-						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+					"role": {
+						DisplayName: "Role",
+						Description: "One of: AUDITOR, BUSINESS_ADMIN, BUSINESS_BOOKKEEPER, BUSINESS_USER, GUEST_USER, IT_ADMIN",
+						Required:    true,
+						Order:       4,
+						Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
+							StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+						},
 					},
-				},
-				"direct_manager_email": {
-					DisplayName: "Direct Manager Email",
-					Description: "Ramp email of the new user's direct manager",
-					Required:    false,
-					Order:       5,
-					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
-						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
-					},
-				},
-				"department": {
-					DisplayName: "Department",
-					Description: "Ramp department ID or name",
-					Required:    false,
-					Order:       6,
-					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
-						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
-					},
-				},
-				"location": {
-					DisplayName: "Location",
-					Description: "Ramp location ID or name",
-					Required:    false,
-					Order:       7,
-					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
-						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
-					},
-				},
-			},
+				}
+				// The provisioning-attribute fields require the
+				// departments:read/locations:read scopes; only advertise them
+				// when BATON_PROVISIONING_ATTRIBUTES is enabled, matching the
+				// resolver's fail-closed behavior in account_attributes.go.
+				if d.provisioningAttributesEnabled {
+					fields["direct_manager_email"] = &v2.ConnectorAccountCreationSchema_Field{
+						DisplayName: "Direct Manager Email",
+						Description: "Ramp email of the new user's direct manager",
+						Required:    false,
+						Order:       5,
+						Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
+							StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+						},
+					}
+					fields["department"] = &v2.ConnectorAccountCreationSchema_Field{
+						DisplayName: "Department",
+						Description: "Ramp department ID or name",
+						Required:    false,
+						Order:       6,
+						Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
+							StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+						},
+					}
+					fields["location"] = &v2.ConnectorAccountCreationSchema_Field{
+						DisplayName: "Location",
+						Description: "Ramp location ID or name",
+						Required:    false,
+						Order:       7,
+						Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
+							StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+						},
+					}
+				}
+				return fields
+			}(),
 		},
 	}, nil
 }

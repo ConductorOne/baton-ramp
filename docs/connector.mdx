@@ -69,6 +69,9 @@ The Ramp connector supports two authentication methods. Choose the one that fits
     If you enable audit-log event polling, also select:
 
     - `audit_logs:read` — read Ramp audit-log events for incremental sync
+
+    If you enable provisioning attributes (`BATON_PROVISIONING_ATTRIBUTES=true`), also select:
+
     - `departments:read` — resolve the `department` account-creation field to a Ramp ID
     - `locations:read` — resolve the `location` account-creation field to a Ramp ID
 
@@ -107,6 +110,9 @@ For more information, see the [Ramp API token documentation](https://docs.ramp.c
        If you enable audit-log event polling, also select:
 
        - `audit_logs:read` — read Ramp audit-log events for incremental sync
+
+       If you enable provisioning attributes (`BATON_PROVISIONING_ATTRIBUTES=true`), also select:
+
        - `departments:read` — resolve the `department` account-creation field to a Ramp ID
        - `locations:read` — resolve the `location` account-creation field to a Ramp ID
 
