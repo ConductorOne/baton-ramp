@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -192,6 +193,10 @@ type attributeTestServer struct {
 	locByID        attrLookupResponse
 	locList        attrLookupResponse
 
+	// Optional X-RateLimit-Limit header values to prove annotation precedence.
+	deptRateLimit   int
+	createRateLimit int
+
 	lookupCalls   int
 	deptIDCalls   int
 	deptListCalls int
@@ -221,6 +226,9 @@ func newAttributeTestBuilder(t *testing.T, ts *attributeTestServer) *userBuilder
 			w.WriteHeader(ts.lookupResponse.status)
 			_, _ = w.Write([]byte(ts.lookupResponse.body))
 		case r.Method == "POST" && r.URL.Path == "/developer/v1/users/deferred":
+			if ts.createRateLimit > 0 {
+				w.Header().Set("X-RateLimit-Limit", strconv.Itoa(ts.createRateLimit))
+			}
 			ts.createCalls++
 			body, err := io.ReadAll(r.Body)
 			if err != nil {
@@ -230,6 +238,9 @@ func newAttributeTestBuilder(t *testing.T, ts *attributeTestServer) *userBuilder
 			w.WriteHeader(http.StatusCreated)
 			_, _ = w.Write([]byte(`{"id":"task-1"}`))
 		case r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/developer/v1/departments/"):
+			if ts.deptRateLimit > 0 {
+				w.Header().Set("X-RateLimit-Limit", strconv.Itoa(ts.deptRateLimit))
+			}
 			ts.deptIDCalls++
 			w.WriteHeader(ts.deptByID.status)
 			_, _ = w.Write([]byte(ts.deptByID.body))
@@ -539,5 +550,40 @@ func TestCreateAccountFlagOffWithFieldsSetFailsClosed(t *testing.T) {
 	}
 	if ts.createCalls != 0 {
 		t.Fatalf("create calls = %d, want 0", ts.createCalls)
+	}
+}
+
+func TestCreateAccountRateLimitAnnotationPrecedence(t *testing.T) {
+	// The resolution phase (ID probe) carries its own rate-limit data, but the
+	// CreateUser annotation must keep final precedence in the returned annos.
+	ts := &attributeTestServer{
+		lookupResponse:  noUsersLookup,
+		deptByID:        attrDeptByID,
+		deptList:        attrDeptListOne,
+		locByID:         attrLocByID,
+		locList:         attrLocListOne,
+		deptRateLimit:   100,
+		createRateLimit: 200,
+	}
+	builder := newAttributeTestBuilder(t, ts)
+	resp, _, annos, err := builder.CreateAccount(context.Background(), attributeTestInfo(t, map[string]string{
+		"department": "dept-1",
+	}), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := resp.(*v2.CreateAccountResponse_ActionRequiredResult); !ok {
+		t.Fatalf("expected ActionRequiredResult, got %T", resp)
+	}
+	var rl v2.RateLimitDescription
+	found, err := annos.Pick(&rl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !found {
+		t.Fatal("expected a rate-limit annotation on the CreateAccount result")
+	}
+	if rl.Limit != 200 {
+		t.Fatalf("rate-limit annotation Limit = %d, want 200 (CreateUser must win)", rl.Limit)
 	}
 }

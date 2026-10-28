@@ -19,6 +19,8 @@ import (
 type attrTestServer struct {
 	deptByIDStatus   int
 	deptByIDBody     string
+	deptRateLimit    int
+	deptListStatus   int
 	deptListBody     string
 	deptListCalls    int
 	locByIDStatus    int
@@ -36,10 +38,18 @@ func newAttrTestClient(t *testing.T, ts *attrTestServer) *client.Client {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/developer/v1/departments/"):
+			if ts.deptRateLimit > 0 {
+				w.Header().Set("X-RateLimit-Limit", strconv.Itoa(ts.deptRateLimit))
+			}
 			w.WriteHeader(ts.deptByIDStatus)
 			_, _ = w.Write([]byte(ts.deptByIDBody))
 		case r.Method == http.MethodGet && r.URL.Path == "/developer/v1/departments":
 			ts.deptListCalls++
+			status := ts.deptListStatus
+			if status == 0 {
+				status = http.StatusOK
+			}
+			w.WriteHeader(status)
 			_, _ = w.Write([]byte(ts.deptListBody))
 		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/developer/v1/locations/"):
 			w.WriteHeader(ts.locByIDStatus)
@@ -112,12 +122,9 @@ func TestResolveAttributesFlagOffWithFieldsSet(t *testing.T) {
 }
 
 func TestResolveAttributesPageCapExceeded(t *testing.T) {
-	ts := &attrTestServer{
-		deptByIDStatus: http.StatusNotFound,
-		deptByIDBody:   `{"message":"not found"}`,
-		// The custom handler below always serves a next token: the walk must
-		// stop at maxAttrLookupPages.
-	}
+	// The custom handler below always serves a next token: the walk must
+	// stop at maxAttrLookupPages.
+	ts := &attrTestServer{}
 	// Serve a full-URL next token, like the real API's page.next.
 	var server *httptest.Server
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -383,11 +390,9 @@ func TestResolveAttributesReturnsRateLimitData(t *testing.T) {
 	ts := &attrTestServer{
 		deptByIDStatus: http.StatusOK,
 		deptByIDBody:   `{"id":"dept-1","name":"Engineering"}`,
+		deptRateLimit:  42,
 	}
 	c := newAttrTestClient(t, ts)
-	// Note: the fake server cannot inject per-request headers through the
-	// shared handler; the probe response carries whatever headers uhttp
-	// extracted. This row asserts threading, not header parsing.
 	fields := attrFields(t, map[string]string{"department": "dept-1"})
 	attrs, rl, err := resolveCreationAttributes(context.Background(), c, fields, true)
 	if err != nil {
@@ -398,5 +403,35 @@ func TestResolveAttributesReturnsRateLimitData(t *testing.T) {
 	}
 	if rl == nil {
 		t.Fatal("resolution must thread rate-limit data out (non-nil)")
+	}
+	if rl.Limit != 42 {
+		t.Fatalf("rate-limit Limit = %d, want 42 (header value threaded from the probe)", rl.Limit)
+	}
+}
+
+func TestResolveAttributesListSearchErrorFailsClosed(t *testing.T) {
+	// The name walk itself failing with 400 (InvalidArgument) must produce the
+	// fail-closed "search failed" error — not the zero-match message.
+	ts := &attrTestServer{
+		deptByIDStatus: http.StatusNotFound,
+		deptByIDBody:   `{"message":"not found"}`,
+		deptListStatus: http.StatusBadRequest,
+		deptListBody:   `{"message":"UserInvalidInput"}`,
+	}
+	c := newAttrTestClient(t, ts)
+
+	fields := attrFields(t, map[string]string{"department": "Engineering"})
+	_, _, err := resolveCreationAttributes(context.Background(), c, fields, true)
+	if err == nil {
+		t.Fatal("expected fail-closed error when the list search fails")
+	}
+	if code := grpcstatus.Code(err); code != codes.InvalidArgument {
+		t.Fatalf("code = %v, want InvalidArgument", code)
+	}
+	if !strings.Contains(err.Error(), "search failed") {
+		t.Fatalf("error %q must use the search-failed wording", err)
+	}
+	if strings.Contains(err.Error(), "no Ramp department with that ID or name") {
+		t.Fatalf("walk-failure must not claim no-match: %q", err)
 	}
 }
