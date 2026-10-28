@@ -12,10 +12,11 @@ import (
 )
 
 type Connector struct {
-	client                  *client.Client
-	baseURL                 string
-	disableVendorAgreements bool
-	auditLogEventsEnabled   bool
+	client                        *client.Client
+	baseURL                       string
+	disableVendorAgreements       bool
+	auditLogEventsEnabled         bool
+	provisioningAttributesEnabled bool
 }
 
 type Option func(*Connector) error
@@ -49,10 +50,20 @@ func WithAuditLogEvents(enabled bool) Option {
 	}
 }
 
+// WithProvisioningAttributes opts the connector into resolving manager,
+// department and location on account creation. Default false so installs
+// without departments:read/locations:read keep working.
+func WithProvisioningAttributes(enabled bool) Option {
+	return func(c *Connector) error {
+		c.provisioningAttributesEnabled = enabled
+		return nil
+	}
+}
+
 // ResourceSyncers returns a ResourceSyncer for each resource type that should be synced from the upstream service.
 func (d *Connector) ResourceSyncers(ctx context.Context) []connectorbuilder.ResourceSyncer {
 	syncers := []connectorbuilder.ResourceSyncer{
-		newUserBuilder(d.client),
+		newUserBuilder(d.client, d.provisioningAttributesEnabled),
 		newRoleBuilder(d.client),
 		newVendorBuilder(d.client),
 	}
@@ -113,6 +124,33 @@ func (d *Connector) Metadata(ctx context.Context) (*v2.ConnectorMetadata, error)
 					Description: "One of: AUDITOR, BUSINESS_ADMIN, BUSINESS_BOOKKEEPER, BUSINESS_USER, GUEST_USER, IT_ADMIN",
 					Required:    true,
 					Order:       4,
+					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
+						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+					},
+				},
+				"direct_manager_email": {
+					DisplayName: "Direct Manager Email",
+					Description: "Ramp email of the new user's direct manager",
+					Required:    false,
+					Order:       5,
+					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
+						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+					},
+				},
+				"department": {
+					DisplayName: "Department",
+					Description: "Ramp department ID or name",
+					Required:    false,
+					Order:       6,
+					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
+						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+					},
+				},
+				"location": {
+					DisplayName: "Location",
+					Description: "Ramp location ID or name",
+					Required:    false,
+					Order:       7,
 					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
 						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
 					},

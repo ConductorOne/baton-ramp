@@ -42,7 +42,16 @@ var (
 		field.WithDefaultValue(false),
 	)
 
-	ConfigurationFields = []field.SchemaField{Token, RampClientID, RampClientSecret, RampBaseURL, AuditLogEvents}
+	ProvisioningAttributes = field.BoolField("provisioning-attributes",
+		field.WithDisplayName("Set manager, department and location on user creation"),
+		field.WithDescription(
+			"Enable setting manager, department and location on Ramp user creation. "+
+				"Adds the departments:read and locations:read OAuth scopes — grant them to the Ramp OAuth app first. Default off.",
+		),
+		field.WithDefaultValue(false),
+	)
+
+	ConfigurationFields = []field.SchemaField{Token, RampClientID, RampClientSecret, RampBaseURL, AuditLogEvents, ProvisioningAttributes}
 
 	// Field groups gate which fields are validated per selected auth method.
 	// No top-level relationship constraints: FieldsMutuallyExclusive rejects
@@ -55,14 +64,14 @@ var (
 			Name:        AccessTokenGroup,
 			DisplayName: "Access Token",
 			HelpText:    "Authenticate using a Ramp API access token.",
-			Fields:      []field.SchemaField{Token, RampBaseURL, AuditLogEvents},
+			Fields:      []field.SchemaField{Token, RampBaseURL, AuditLogEvents, ProvisioningAttributes},
 			Default:     true,
 		},
 		{
 			Name:        ClientCredentialsGroup,
 			DisplayName: "OAuth 2.0 Client Credentials",
 			HelpText:    "Authenticate using OAuth 2.0 client credentials issued by Ramp.",
-			Fields:      []field.SchemaField{RampClientID, RampClientSecret, RampBaseURL, AuditLogEvents},
+			Fields:      []field.SchemaField{RampClientID, RampClientSecret, RampBaseURL, AuditLogEvents, ProvisioningAttributes},
 		},
 	}
 )

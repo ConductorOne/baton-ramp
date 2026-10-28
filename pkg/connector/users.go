@@ -29,7 +29,8 @@ var validCreateRoles = map[string]bool{
 }
 
 type userBuilder struct {
-	client *client.Client
+	client       *client.Client
+	attrsEnabled bool
 }
 
 func (o *userBuilder) ResourceType(ctx context.Context) *v2.ResourceType {
@@ -170,11 +171,27 @@ func (o *userBuilder) CreateAccount(
 		}, nil, annos, nil
 	}
 
+	attrs, err := resolveCreationAttributes(ctx, o.client, profileFields, o.attrsEnabled)
+	if err != nil {
+		return nil, nil, annos, err
+	}
+
 	req := &client.CreateUserRequest{
 		Email:     email,
 		FirstName: firstName,
 		LastName:  lastName,
 		Role:      role,
+	}
+	if attrs != nil {
+		if attrs.DepartmentID != "" {
+			req.DepartmentID = &attrs.DepartmentID
+		}
+		if attrs.DirectManagerID != "" {
+			req.DirectManagerID = &attrs.DirectManagerID
+		}
+		if attrs.LocationID != "" {
+			req.LocationID = &attrs.LocationID
+		}
 	}
 
 	task, ratelimitData, err := o.client.CreateUser(ctx, req)
@@ -190,8 +207,9 @@ func (o *userBuilder) CreateAccount(
 	}, nil, annos, nil
 }
 
-func newUserBuilder(client *client.Client) *userBuilder {
+func newUserBuilder(client *client.Client, attrsEnabled bool) *userBuilder {
 	return &userBuilder{
-		client: client,
+		client:       client,
+		attrsEnabled: attrsEnabled,
 	}
 }
