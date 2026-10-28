@@ -173,3 +173,65 @@ func TestGetLocationErrorPath(t *testing.T) {
 		t.Fatalf("code = %v, want NotFound", code)
 	}
 }
+
+func TestGetDepartmentEscapesIDProbeValue(t *testing.T) {
+	ctx := context.Background()
+	var gotPath, gotQuery string
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.RequestURI
+		gotQuery = r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"x","name":"Escaped"}`))
+	}))
+	defer server.Close()
+
+	c, err := New(ctx, Token{AccessToken: "token"}, server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// A value containing path/query/fragment metacharacters must stay a single
+	// escaped path segment — never alter the request shape.
+	value := "a/b?x=1#f"
+	if _, _, err := c.GetDepartment(ctx, value); err != nil {
+		t.Fatal(err)
+	}
+	want := "/developer/v1/departments/a%2Fb%3Fx=1%23f"
+	if gotPath != want {
+		t.Fatalf("path = %q, want %q", gotPath, want)
+	}
+	if gotQuery != "" {
+		t.Fatalf("query = %q, want empty (metacharacters escaped)", gotQuery)
+	}
+}
+
+func TestGetLocationEscapesIDProbeValue(t *testing.T) {
+	ctx := context.Background()
+	var gotPath, gotQuery string
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.RequestURI
+		gotQuery = r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"x","name":"Escaped","entity_id":"e1"}`))
+	}))
+	defer server.Close()
+
+	c, err := New(ctx, Token{AccessToken: "token"}, server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	value := "a/b?x=1#f"
+	if _, _, err := c.GetLocation(ctx, value); err != nil {
+		t.Fatal(err)
+	}
+	want := "/developer/v1/locations/a%2Fb%3Fx=1%23f"
+	if gotPath != want {
+		t.Fatalf("path = %q, want %q", gotPath, want)
+	}
+	if gotQuery != "" {
+		t.Fatalf("query = %q, want empty (metacharacters escaped)", gotQuery)
+	}
+}

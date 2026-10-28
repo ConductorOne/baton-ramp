@@ -33,10 +33,10 @@ The current Ramp user list/fetch role enum has expanded beyond the original v1 s
 |---|---:|---|---|
 | `GET /developer/v1/users` | Yes | Full for users and role grants | Lists users, builds user resources, and derives role grants from `role`. Account creation also filters by `email` to return an existing user instead of creating a duplicate. |
 | `GET /developer/v1/users/{user_id}` | No | Missing | Not needed for sync because list returns the same user fields used by the connector. |
-| `GET /developer/v1/departments` | Yes | Read only | `pkg/client/org.go`, `pkg/connector/account_attributes.go` | Used to resolve the `department` account-creation attribute by name (requires `departments:read` and `BATON_PROVISIONING_ATTRIBUTES=true`). |
-| `GET /developer/v1/departments/{id}` | Yes | Read only | `pkg/client/org.go`, `pkg/connector/account_attributes.go` | Used to probe the `department` account-creation attribute by ID. |
-| `GET /developer/v1/locations` | Yes | Read only | `pkg/client/org.go`, `pkg/connector/account_attributes.go` | Used to resolve the `location` account-creation attribute by name (requires `locations:read` and `BATON_PROVISIONING_ATTRIBUTES=true`). |
-| `GET /developer/v1/locations/{id}` | Yes | Read only | `pkg/client/org.go`, `pkg/connector/account_attributes.go` | Used to probe the `location` account-creation attribute by ID. |
+| `GET /developer/v1/departments` | Yes | Read only | Resolves the `department` account-creation attribute by name via `pkg/client/org.go` and `pkg/connector/account_attributes.go` (requires `departments:read` and `BATON_PROVISIONING_ATTRIBUTES=true`). |
+| `GET /developer/v1/departments/{id}` | Yes | Read only | Probes the `department` account-creation attribute by ID via `pkg/client/org.go` and `pkg/connector/account_attributes.go`. |
+| `GET /developer/v1/locations` | Yes | Read only | Resolves the `location` account-creation attribute by name via `pkg/client/org.go` and `pkg/connector/account_attributes.go` (requires `locations:read` and `BATON_PROVISIONING_ATTRIBUTES=true`). |
+| `GET /developer/v1/locations/{id}` | Yes | Read only | Probes the `location` account-creation attribute by ID via `pkg/client/org.go` and `pkg/connector/account_attributes.go`. |
 | `POST /developer/v1/users/deferred` | Yes | Partial | Supports account creation with `email`, `first_name`, `last_name`, and `role`. With `BATON_PROVISIONING_ATTRIBUTES=true`, also sends `direct_manager_id`, `department_id`, and `location_id` resolved from the optional account-creation profile fields. Other create fields are not exposed in the account creation schema. |
 | `GET /developer/v1/users/deferred/status/{task_id}` | No | Missing | Connector returns action-required after invite; it does not poll deferred task status. |
 | `PATCH /developer/v1/users/{user_id}` | No | Missing | Role/manager/location/department updates are not implemented. |

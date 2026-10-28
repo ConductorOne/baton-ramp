@@ -19,9 +19,6 @@ Required Ramp scopes:
 - Audit-log event polling: requires Ramp audit-log API availability, such as Ramp Plus; add `audit_logs:read` and set `BATON_AUDIT_LOG_EVENTS=true`
 - Account-creation attributes: add `departments:read` and `locations:read` and set `BATON_PROVISIONING_ATTRIBUTES=true` to let C1 set a new Ramp user's direct manager, department and location at creation time. Grant the scopes to the Ramp OAuth app first.
 
-  With the flag on, the account-creation schema accepts three optional profile fields: `direct_manager_email` (Ramp email of the new user's direct manager), `department` (Ramp department ID or name) and `location` (Ramp location ID or name — it also decides the user's entity). Every supplied value is resolved to a Ramp ID **before** the user is created; a value that matches nothing fails account creation with a clear error instead of creating the user without it.
-- Account-creation attributes: add `departments:read` and `locations:read` and set `BATON_PROVISIONING_ATTRIBUTES=true` to let C1 set a new Ramp user's direct manager, department and location at creation time. Grant the scopes to the Ramp OAuth app first.
-
   With the flag on, the account-creation schema accepts three optional profile fields:
   - `direct_manager_email` — Ramp email of the new user's direct manager
   - `department` — Ramp department ID or name
@@ -111,7 +108,6 @@ Available Commands:
 
 Flags:
       --audit-log-events                                 Enable Ramp audit-log polling for incremental sync events. Adds the audit_logs:read OAuth scope. Default off. ($BATON_AUDIT_LOG_EVENTS)
-      --provisioning-attributes                          Enable setting manager, department and location on Ramp user creation. Adds the departments:read and locations:read OAuth scopes — grant them to the Ramp OAuth app first. Default off. ($BATON_PROVISIONING_ATTRIBUTES)
       --provisioning-attributes                          Enable setting manager, department and location on Ramp user creation. Adds the departments:read and locations:read OAuth scopes — grant them to the Ramp OAuth app first. Default off. ($BATON_PROVISIONING_ATTRIBUTES)
       --auth-method string                               Authentication method: "access_token" or "client_credentials" ($BATON_AUTH_METHOD)
       --client-id string                                 The client ID used to authenticate with ConductorOne ($BATON_CLIENT_ID)

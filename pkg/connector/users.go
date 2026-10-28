@@ -171,9 +171,14 @@ func (o *userBuilder) CreateAccount(
 		}, nil, annos, nil
 	}
 
-	attrs, err := resolveCreationAttributes(ctx, o.client, profileFields, o.attrsEnabled)
+	attrs, attrRatelimitData, err := resolveCreationAttributes(ctx, o.client, profileFields, o.attrsEnabled)
 	if err != nil {
 		return nil, nil, annos, err
+	}
+	// Resolution-phase rate-limit data reaches the SDK; the CreateUser
+	// annotation below keeps final precedence.
+	if attrRatelimitData != nil {
+		annos.WithRateLimiting(attrRatelimitData)
 	}
 
 	req := &client.CreateUserRequest{

@@ -17,16 +17,17 @@ import (
 // attrTestServer drives resolveCreationAttributes against a fake Ramp API.
 // Routes: departments/{id}, departments, locations/{id}, locations, users?email=.
 type attrTestServer struct {
-	deptByIDStatus  int
-	deptByIDBody    string
-	deptListBody    string
-	deptListCalls   int
-	locByIDStatus   int
-	locByIDBody     string
-	locListBody     string
-	locListCalls    int
-	userLookupBody  string
-	userLookupCalls int
+	deptByIDStatus   int
+	deptByIDBody     string
+	deptListBody     string
+	deptListCalls    int
+	locByIDStatus    int
+	locByIDBody      string
+	locListBody      string
+	locListCalls     int
+	userLookupStatus int
+	userLookupBody   string
+	userLookupCalls  int
 }
 
 func newAttrTestClient(t *testing.T, ts *attrTestServer) *client.Client {
@@ -51,7 +52,11 @@ func newAttrTestClient(t *testing.T, ts *attrTestServer) *client.Client {
 				t.Errorf("users lookup without email query: %s", r.URL.RawQuery)
 			}
 			ts.userLookupCalls++
-			w.WriteHeader(http.StatusOK)
+			status := ts.userLookupStatus
+			if status == 0 {
+				status = http.StatusOK
+			}
+			w.WriteHeader(status)
 			_, _ = w.Write([]byte(ts.userLookupBody))
 		default:
 			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
@@ -88,7 +93,7 @@ func TestResolveAttributesFlagOffWithFieldsSet(t *testing.T) {
 	c := newAttrTestClient(t, ts)
 
 	fields := attrFields(t, map[string]string{"department": "dept-1"})
-	attrs, err := resolveCreationAttributes(context.Background(), c, fields, false)
+	attrs, _, err := resolveCreationAttributes(context.Background(), c, fields, false)
 	if err == nil {
 		t.Fatal("expected error when flag off with fields set")
 	}
@@ -110,8 +115,8 @@ func TestResolveAttributesPageCapExceeded(t *testing.T) {
 	ts := &attrTestServer{
 		deptByIDStatus: http.StatusNotFound,
 		deptByIDBody:   `{"message":"not found"}`,
-		// Always a next token: the walk must stop at maxAttrLookupPages.
-		deptListBody: `{"data":[{"id":"dept-a","name":"Wrong"}],"page":{"next":""}}`,
+		// The custom handler below always serves a next token: the walk must
+		// stop at maxAttrLookupPages.
 	}
 	// Serve a full-URL next token, like the real API's page.next.
 	var server *httptest.Server
@@ -137,7 +142,7 @@ func TestResolveAttributesPageCapExceeded(t *testing.T) {
 	}
 
 	fields := attrFields(t, map[string]string{"department": "Engineering"})
-	_, err = resolveCreationAttributes(context.Background(), c, fields, true)
+	_, _, err = resolveCreationAttributes(context.Background(), c, fields, true)
 	if err == nil {
 		t.Fatal("expected list-exhausted error")
 	}
@@ -159,7 +164,7 @@ func TestResolveAttributesProbeInvalidArgumentFallsThroughToName(t *testing.T) {
 	c := newAttrTestClient(t, ts)
 
 	fields := attrFields(t, map[string]string{"department": "Engineering"})
-	attrs, err := resolveCreationAttributes(context.Background(), c, fields, true)
+	attrs, _, err := resolveCreationAttributes(context.Background(), c, fields, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +180,7 @@ func TestResolveAttributesNothingSetMakesNoCalls(t *testing.T) {
 	ts := &attrTestServer{}
 	c := newAttrTestClient(t, ts)
 
-	attrs, err := resolveCreationAttributes(context.Background(), c, map[string]*structpb.Value{}, true)
+	attrs, _, err := resolveCreationAttributes(context.Background(), c, map[string]*structpb.Value{}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +201,7 @@ func TestResolveAttributesAmbiguousNameFailsClosed(t *testing.T) {
 	c := newAttrTestClient(t, ts)
 
 	fields := attrFields(t, map[string]string{"department": "engineering"})
-	_, err := resolveCreationAttributes(context.Background(), c, fields, true)
+	_, _, err := resolveCreationAttributes(context.Background(), c, fields, true)
 	if err == nil {
 		t.Fatal("expected ambiguous-name error")
 	}
@@ -217,7 +222,7 @@ func TestResolveAttributesUnknownManagerEmailFailsClosed(t *testing.T) {
 	c := newAttrTestClient(t, ts)
 
 	fields := attrFields(t, map[string]string{"direct_manager_email": "nobody@example.com"})
-	_, err := resolveCreationAttributes(context.Background(), c, fields, true)
+	_, _, err := resolveCreationAttributes(context.Background(), c, fields, true)
 	if err == nil {
 		t.Fatal("expected unresolved manager error")
 	}
@@ -237,7 +242,7 @@ func TestResolveAttributesProbeForbiddenPropagates(t *testing.T) {
 	c := newAttrTestClient(t, ts)
 
 	fields := attrFields(t, map[string]string{"department": "dept-1"})
-	_, err := resolveCreationAttributes(context.Background(), c, fields, true)
+	_, _, err := resolveCreationAttributes(context.Background(), c, fields, true)
 	if err == nil {
 		t.Fatal("expected upstream error to propagate")
 	}
@@ -256,7 +261,7 @@ func TestResolveAttributesLocationByIDAndName(t *testing.T) {
 	}
 	c := newAttrTestClient(t, byID)
 	fields := attrFields(t, map[string]string{"location": "loc-1"})
-	attrs, err := resolveCreationAttributes(context.Background(), c, fields, true)
+	attrs, _, err := resolveCreationAttributes(context.Background(), c, fields, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -274,11 +279,124 @@ func TestResolveAttributesLocationByIDAndName(t *testing.T) {
 	}
 	c = newAttrTestClient(t, byName)
 	fields = attrFields(t, map[string]string{"location": "Remote"})
-	attrs, err = resolveCreationAttributes(context.Background(), c, fields, true)
+	attrs, _, err = resolveCreationAttributes(context.Background(), c, fields, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if attrs == nil || attrs.LocationID != "loc-2" {
 		t.Fatalf("attrs = %+v, want location loc-2", attrs)
+	}
+}
+
+func TestResolveAttributesNonStringValueFailsClosed(t *testing.T) {
+	ts := &attrTestServer{}
+	c := newAttrTestClient(t, ts)
+
+	// A present-but-non-string profile value must fail closed, not be silently
+	// dropped — including with the flag off (kind check precedes the guard).
+	num := structpb.NewNumberValue(42)
+	for _, enabled := range []bool{false, true} {
+		attrs, _, err := resolveCreationAttributes(context.Background(), c, map[string]*structpb.Value{
+			"department": num,
+		}, enabled)
+		if err == nil {
+			t.Fatal("expected error for non-string profile value")
+		}
+		if attrs != nil {
+			t.Fatalf("attrs = %+v, want nil", attrs)
+		}
+		if code := grpcstatus.Code(err); code != codes.InvalidArgument {
+			t.Fatalf("code = %v, want InvalidArgument", code)
+		}
+		if !strings.Contains(err.Error(), "must be a string value") {
+			t.Fatalf("error %q must name the string-kind requirement", err)
+		}
+	}
+	if ts.deptListCalls != 0 || ts.locListCalls != 0 || ts.userLookupCalls != 0 {
+		t.Fatalf("lookup calls made for a non-string value: dept list %d loc list %d users %d, want all zero", ts.deptListCalls, ts.locListCalls, ts.userLookupCalls)
+	}
+}
+
+func TestResolveAttributesNullValueTreatedAsAbsent(t *testing.T) {
+	ts := &attrTestServer{}
+	c := newAttrTestClient(t, ts)
+
+	attrs, _, err := resolveCreationAttributes(context.Background(), c, map[string]*structpb.Value{
+		"department": structpb.NewNullValue(),
+	}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if attrs != nil {
+		t.Fatalf("attrs = %+v, want nil (null is absent)", attrs)
+	}
+	if ts.deptListCalls != 0 || ts.locListCalls != 0 || ts.userLookupCalls != 0 {
+		t.Fatalf("lookup calls made for a null value, want zero")
+	}
+}
+
+func TestResolveAttributesEmptyIDProbeFallsThroughToName(t *testing.T) {
+	ts := &attrTestServer{
+		// An ID probe that returns HTTP 200 with an empty body decodes to a
+		// zero-value Department: the empty resolved ID must NOT be accepted as a
+		// match; the value falls through to the name walk.
+		deptByIDStatus: http.StatusOK,
+		deptByIDBody:   `{}`,
+		deptListBody:   `{"data":[{"id":"dept-9","name":"Engineering"}],"page":{"next":""}}`,
+	}
+	c := newAttrTestClient(t, ts)
+
+	fields := attrFields(t, map[string]string{"department": "Engineering"})
+	attrs, _, err := resolveCreationAttributes(context.Background(), c, fields, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if attrs == nil || attrs.DepartmentID != "dept-9" {
+		t.Fatalf("attrs = %+v, want department dept-9 via name walk", attrs)
+	}
+	if ts.deptListCalls != 1 {
+		t.Fatalf("dept list calls = %d, want 1 (fall-through to name walk)", ts.deptListCalls)
+	}
+}
+
+func TestResolveAttributesManagerLookupNotFound(t *testing.T) {
+	ts := &attrTestServer{
+		userLookupStatus: http.StatusNotFound,
+		userLookupBody:   `{"message":"not found"}`,
+	}
+	c := newAttrTestClient(t, ts)
+
+	fields := attrFields(t, map[string]string{"direct_manager_email": "ghost@example.com"})
+	_, _, err := resolveCreationAttributes(context.Background(), c, fields, true)
+	if err == nil {
+		t.Fatal("expected fail-closed error on manager-lookup 404")
+	}
+	if code := grpcstatus.Code(err); code != codes.InvalidArgument {
+		t.Fatalf("code = %v, want InvalidArgument (NotFound maps to the fail-closed error)", code)
+	}
+	if !strings.Contains(err.Error(), "no Ramp user with that email") {
+		t.Fatalf("error %q must carry the fail-closed guidance", err)
+	}
+}
+
+func TestResolveAttributesReturnsRateLimitData(t *testing.T) {
+	ts := &attrTestServer{
+		deptByIDStatus: http.StatusOK,
+		deptByIDBody:   `{"id":"dept-1","name":"Engineering"}`,
+	}
+	c := newAttrTestClient(t, ts)
+	// Note: the fake server cannot inject per-request headers through the
+	// shared handler; the probe response carries whatever headers uhttp
+	// extracted. This row asserts threading, not header parsing.
+	fields := attrFields(t, map[string]string{"department": "dept-1"})
+	attrs, rl, err := resolveCreationAttributes(context.Background(), c, fields, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if attrs == nil || attrs.DepartmentID != "dept-1" {
+		t.Fatalf("attrs = %+v, want department dept-1", attrs)
+	}
+	if rl == nil {
+		t.Fatal("resolution must thread rate-limit data out (non-nil)")
 	}
 }

@@ -61,7 +61,7 @@ func addDepartmentsListParams(reqURL string) (string, error) {
 // Required scope: departments:read.
 // https://docs.ramp.com/developer-api/v1/api/departments
 func (c *Client) GetDepartment(ctx context.Context, departmentID string) (*Department, *v2.RateLimitDescription, error) {
-	reqURL, err := c.newUnPaginatedURL(fmt.Sprintf("%s/%s", departmentsPath, departmentID))
+	reqURL, err := c.newUnPaginatedURL(fmt.Sprintf("%s/%s", departmentsPath, url.PathEscape(departmentID)))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -117,7 +117,7 @@ func addLocationsListParams(reqURL string) (string, error) {
 // Required scope: locations:read.
 // https://docs.ramp.com/developer-api/v1/api/locations
 func (c *Client) GetLocation(ctx context.Context, locationID string) (*Location, *v2.RateLimitDescription, error) {
-	reqURL, err := c.newUnPaginatedURL(fmt.Sprintf("%s/%s", locationsPath, locationID))
+	reqURL, err := c.newUnPaginatedURL(fmt.Sprintf("%s/%s", locationsPath, url.PathEscape(locationID)))
 	if err != nil {
 		return nil, nil, err
 	}
