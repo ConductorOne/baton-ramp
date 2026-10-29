@@ -1,0 +1,1047 @@
+{
+ "openapi": "3.0.2",
+ "info": {
+  "title": "baton-ramp scoped Ramp Developer API subset",
+  "description": "Subset of the Ramp Developer API covering the operations baton-ramp touches for account-creation attributes. Operations and referenced schemas copied verbatim from the official spec; see specs/openapi-provenance.json for the provenance table.",
+  "version": "v1"
+ },
+ "paths": {
+  "/developer/v1/users/deferred": {
+   "post": {
+    "description": "Call this endpoint to trigger an async task to send out a user invite via email. Users will need to accept the invite in order to be onboarded.\n\nAssign a user to a specific entity by specifying a `location_id` on creation. Locations are mapped to entities with a many-to-one relationship.",
+    "operationId": "post_user_creation_deferred_task",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ApiUserCreateRequestBody"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DeferredTaskUUID"
+        }
+       }
+      },
+      "description": "Response with the ID of the async task. Task status can be checked via a GET call to .../deferred/status/<task_id>"
+     }
+    },
+    "security": [
+     {
+      "oauth2": [
+       "users:write"
+      ]
+     }
+    ],
+    "summary": "Create a user invite",
+    "tags": [
+     "User"
+    ],
+    "x-annotatedRequest": true,
+    "x-annotatedResponse": true,
+    "x-ramp-plus-required": false
+   }
+  },
+  "/developer/v1/users": {
+   "get": {
+    "operationId": "get_user_list_with_pagination",
+    "parameters": [
+     {
+      "description": "Filter by user employee_id",
+      "in": "query",
+      "name": "employee_id",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "description": "Filter by user role",
+      "in": "query",
+      "name": "role",
+      "required": false,
+      "schema": {
+       "enum": [
+        "AUDITOR",
+        "BUSINESS_ADMIN",
+        "BUSINESS_BOOKKEEPER",
+        "BUSINESS_OWNER",
+        "BUSINESS_USER",
+        "GUEST_USER",
+        "IT_ADMIN"
+       ],
+       "type": "string"
+      }
+     },
+     {
+      "description": "Filter only for users with the given status. Defaults to returning all active and inactive users, but not suspended users",
+      "in": "query",
+      "name": "status",
+      "required": false,
+      "schema": {
+       "default": null,
+       "enum": [
+        "USER_ACTIVE",
+        "USER_DRAFT",
+        "USER_INACTIVE",
+        "USER_SUSPENDED"
+       ],
+       "nullable": true,
+       "type": "string"
+      }
+     },
+     {
+      "description": "The ID of the last entity of the previous page, used for pagination to get the next page.",
+      "in": "query",
+      "name": "start",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "description": "The number of results to be returned in each page. The value must be between 2 and 100. If not specified, the default value 20 will be used.",
+      "in": "query",
+      "name": "page_size",
+      "required": false,
+      "schema": {
+       "default": 20,
+       "type": "integer"
+      }
+     },
+     {
+      "description": "filter by business entity",
+      "in": "query",
+      "name": "entity_id",
+      "required": false,
+      "schema": {
+       "format": "uuid",
+       "type": "string",
+       "x-relationship": {
+        "inverse_field_name": null,
+        "reference_field_name": "id",
+        "target_resource": "entities",
+        "type": "many-to-one"
+       }
+      }
+     },
+     {
+      "description": "filter by department",
+      "in": "query",
+      "name": "department_id",
+      "required": false,
+      "schema": {
+       "format": "uuid",
+       "type": "string",
+       "x-relationship": {
+        "inverse_field_name": null,
+        "reference_field_name": "id",
+        "target_resource": "departments",
+        "type": "many-to-one"
+       }
+      }
+     },
+     {
+      "description": "filter by email",
+      "in": "query",
+      "name": "email",
+      "required": false,
+      "schema": {
+       "format": "email",
+       "type": "string"
+      }
+     },
+     {
+      "description": "filter by location",
+      "in": "query",
+      "name": "location_id",
+      "required": false,
+      "schema": {
+       "format": "uuid",
+       "type": "string",
+       "x-relationship": {
+        "inverse_field_name": null,
+        "reference_field_name": "id",
+        "target_resource": "locations",
+        "type": "many-to-one"
+       }
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PaginatedResponseApiUserResourceSchema"
+        }
+       }
+      },
+      "description": "Users"
+     },
+     "400": {
+      "description": "raises UserInvalidInput",
+      "headers": {
+       "x-trace-id": {
+        "description": "Trace identifier for support and debugging.",
+        "schema": {
+         "type": "string"
+        }
+       }
+      },
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DeveloperApiErrorResponse"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "oauth2": [
+       "users:read"
+      ]
+     }
+    ],
+    "summary": "List users",
+    "tags": [
+     "User"
+    ],
+    "x-annotatedRequest": true,
+    "x-annotatedResponse": true,
+    "x-ramp-plus-required": false,
+    "x-uses-read-replica": true
+   }
+  },
+  "/developer/v1/departments": {
+   "get": {
+    "operationId": "get_department_list_with_pagination",
+    "parameters": [
+     {
+      "description": "The ID of the last entity of the previous page, used for pagination to get the next page.",
+      "in": "query",
+      "name": "start",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "description": "The number of results to be returned in each page. The value must be between 2 and 100. If not specified, the default value 20 will be used.",
+      "in": "query",
+      "name": "page_size",
+      "required": false,
+      "schema": {
+       "default": 20,
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PaginatedResponseApiDepartmentResourceSchema"
+        }
+       }
+      },
+      "description": "Departments"
+     },
+     "400": {
+      "description": "raises DepartmentInvalidInput",
+      "headers": {
+       "x-trace-id": {
+        "description": "Trace identifier for support and debugging.",
+        "schema": {
+         "type": "string"
+        }
+       }
+      },
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DeveloperApiErrorResponse"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "oauth2": [
+       "departments:read"
+      ]
+     }
+    ],
+    "summary": "List departments",
+    "tags": [
+     "Department"
+    ],
+    "x-annotatedRequest": true,
+    "x-annotatedResponse": true,
+    "x-ramp-plus-required": false,
+    "x-uses-read-replica": true
+   }
+  },
+  "/developer/v1/departments/{department_id}": {
+   "get": {
+    "operationId": "get_department_resource",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Department"
+        }
+       }
+      },
+      "description": "Department"
+     }
+    },
+    "security": [
+     {
+      "oauth2": [
+       "departments:read"
+      ]
+     }
+    ],
+    "summary": "Fetch a department",
+    "tags": [
+     "Department"
+    ],
+    "x-annotatedRequest": true,
+    "x-annotatedResponse": true,
+    "x-ramp-plus-required": false,
+    "x-uses-read-replica": true
+   }
+  },
+  "/developer/v1/locations": {
+   "get": {
+    "operationId": "get_location_list_resource",
+    "parameters": [
+     {
+      "description": "Filter by associated business entity.",
+      "in": "query",
+      "name": "entity_id",
+      "required": false,
+      "schema": {
+       "format": "uuid",
+       "type": "string"
+      }
+     },
+     {
+      "description": "The ID of the last entity of the previous page, used for pagination to get the next page.",
+      "in": "query",
+      "name": "start",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "description": "The number of results to be returned in each page. The value must be between 2 and 100. If not specified, the default value 20 will be used.",
+      "in": "query",
+      "name": "page_size",
+      "required": false,
+      "schema": {
+       "default": 20,
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PaginatedResponseApiLocationResourceSchema"
+        }
+       }
+      },
+      "description": "Locations"
+     },
+     "400": {
+      "description": "raises LocationInvalidInput",
+      "headers": {
+       "x-trace-id": {
+        "description": "Trace identifier for support and debugging.",
+        "schema": {
+         "type": "string"
+        }
+       }
+      },
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DeveloperApiErrorResponse"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "oauth2": [
+       "locations:read"
+      ]
+     }
+    ],
+    "summary": "List locations",
+    "tags": [
+     "Location"
+    ],
+    "x-annotatedRequest": true,
+    "x-annotatedResponse": true,
+    "x-ramp-plus-required": false,
+    "x-uses-read-replica": true
+   }
+  },
+  "/developer/v1/locations/{location_id}": {
+   "get": {
+    "operationId": "get_location_single_resource",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Location"
+        }
+       }
+      },
+      "description": "Location"
+     }
+    },
+    "security": [
+     {
+      "oauth2": [
+       "locations:read"
+      ]
+     }
+    ],
+    "summary": "Fetch a location",
+    "tags": [
+     "Location"
+    ],
+    "x-annotatedRequest": true,
+    "x-annotatedResponse": true,
+    "x-ramp-plus-required": false,
+    "x-uses-read-replica": true
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "ApiUserCreateRequestBody": {
+    "example": {
+     "department_id": "2d68eb67-f6eb-4284-8683-7d530c77a5a6",
+     "direct_manager_id": "ccc5d4cc-337f-49a5-86b3-5df128233f2c",
+     "email": "cardholder_7@company.com",
+     "first_name": "Linda",
+     "idempotency_key": "d471d830-2e73-4082-8a75-68540f83e86e",
+     "is_manager": false,
+     "last_name": "Gu",
+     "location_id": "f4efe11c-221f-4b49-a1e4-33eaf96a49ee",
+     "role": "BUSINESS_USER"
+    },
+    "properties": {
+     "department_id": {
+      "description": "Unique identifier of the employee's department",
+      "format": "uuid",
+      "type": "string",
+      "x-relationship": {
+       "inverse_field_name": null,
+       "reference_field_name": "id",
+       "target_resource": "departments",
+       "type": "many-to-one"
+      }
+     },
+     "direct_manager_id": {
+      "description": "Unique identifier of the employee's direct manager",
+      "format": "uuid",
+      "type": "string",
+      "x-relationship": {
+       "inverse_field_name": null,
+       "reference_field_name": "id",
+       "target_resource": "users",
+       "type": "many-to-one"
+      }
+     },
+     "email": {
+      "description": "The employee's email address",
+      "format": "email",
+      "type": "string"
+     },
+     "first_name": {
+      "description": "First name of the employee",
+      "maxLength": 255,
+      "type": "string"
+     },
+     "idempotency_key": {
+      "description": "an idempotency key is a unique value generated by the client which the server uses to recognize subsequent retries of the same request. To avoid collisions, we encourage clients to use random generated UUIDs.",
+      "type": "string"
+     },
+     "is_draft": {
+      "description": "When set to true, the user will be created as a draft. Draft users are not sent an invite email and must be explicitly activated later, which can be accomplished in-app or via the `POST /users/<string:user_id>/invite` resource.",
+      "type": "boolean"
+     },
+     "is_manager": {
+      "description": "Whether the employee is a manager",
+      "type": "boolean"
+     },
+     "last_name": {
+      "description": "Last name of the employee",
+      "maxLength": 255,
+      "type": "string"
+     },
+     "location_id": {
+      "description": "Unique identifier of the employee's location",
+      "format": "uuid",
+      "type": "string",
+      "x-relationship": {
+       "inverse_field_name": null,
+       "reference_field_name": "id",
+       "target_resource": "locations",
+       "type": "many-to-one"
+      }
+     },
+     "role": {
+      "description": "The employee's role; It could be one of the following values: Admin, Cardholder, Bookkeeper; Note that Owner is not a invitable role.",
+      "enum": [
+       "AUDITOR",
+       "BUSINESS_ADMIN",
+       "BUSINESS_BOOKKEEPER",
+       "BUSINESS_OWNER",
+       "BUSINESS_USER",
+       "GUEST_USER",
+       "IT_ADMIN"
+      ],
+      "type": "string"
+     },
+     "scheduled_deactivation_date": {
+      "description": "The date when the user is scheduled to be deactivated. For guest users, this will automatically be set to 6 months from the invite creation date unless explicitly set to null. Cannot be set for admins or owners.",
+      "format": "date",
+      "nullable": true,
+      "type": "string"
+     }
+    },
+    "required": [
+     "email",
+     "first_name",
+     "idempotency_key",
+     "last_name",
+     "role"
+    ],
+    "type": "object"
+   },
+   "ApiUserCustomField": {
+    "properties": {
+     "name": {
+      "description": "Name of the custom field",
+      "type": "string"
+     },
+     "value": {
+      "description": "Value of the custom field",
+      "type": "string"
+     }
+    },
+    "required": [
+     "name",
+     "value"
+    ],
+    "type": "object"
+   },
+   "DeferredTaskUUID": {
+    "properties": {
+     "id": {
+      "description": "ID of the deferred task.",
+      "format": "uuid",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id"
+    ],
+    "type": "object"
+   },
+   "Department": {
+    "example": {
+     "id": "c16b6ee1-2f5d-45e9-9fb4-c1c541a9ea70",
+     "name": "Bookkeeping"
+    },
+    "properties": {
+     "id": {
+      "description": "Unique identifier for the department.",
+      "format": "uuid",
+      "type": "string"
+     },
+     "name": {
+      "description": "Name of the department.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name"
+    ],
+    "type": "object",
+    "x-resource-name": "departments"
+   },
+   "DeveloperAPINestedPage": {
+    "description": "Pagination details for a Developer API response.",
+    "example": {
+     "next": "https://api.ramp.com/developer/v1/<resources>?<new_params>"
+    },
+    "properties": {
+     "next": {
+      "description": "the query to get to the next page; it is in the format of <BASE_URL>?<new_params>",
+      "nullable": true,
+      "type": "string"
+     }
+    },
+    "required": [
+     "next"
+    ],
+    "type": "object"
+   },
+   "Location": {
+    "example": {
+     "entity_id": "bb25a7e8-cc2f-4ba7-9bf4-7730ffe152bb",
+     "id": "f4efe11c-221f-4b49-a1e4-33eaf96a49ee",
+     "name": "New York City, NY"
+    },
+    "properties": {
+     "entity_id": {
+      "description": "Identifier of the business entity this location belongs to.",
+      "format": "uuid",
+      "type": "string",
+      "x-relationship": {
+       "inverse_field_name": null,
+       "reference_field_name": "id",
+       "target_resource": "entities",
+       "type": "many-to-one"
+      }
+     },
+     "id": {
+      "description": "Unique identifier for the location.",
+      "format": "uuid",
+      "type": "string"
+     },
+     "name": {
+      "description": "Name of the location.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "entity_id",
+     "id",
+     "name"
+    ],
+    "type": "object",
+    "x-resource-name": "locations"
+   },
+   "PaginatedResponseApiDepartmentResourceSchema": {
+    "example": {
+     "data": [
+      {
+       "id": "c16b6ee1-2f5d-45e9-9fb4-c1c541a9ea70",
+       "name": "Bookkeeping"
+      }
+     ],
+     "page": {
+      "next": "https://api.ramp.com/developer/v1/<resources>?<new_params>"
+     }
+    },
+    "properties": {
+     "data": {
+      "description": "Resources returned in this page.",
+      "items": {
+       "$ref": "#/components/schemas/Department"
+      },
+      "type": "array"
+     },
+     "page": {
+      "allOf": [
+       {
+        "$ref": "#/components/schemas/DeveloperAPINestedPage"
+       }
+      ],
+      "description": "Pagination details for this response."
+     }
+    },
+    "required": [
+     "data",
+     "page"
+    ],
+    "type": "object"
+   },
+   "PaginatedResponseApiLocationResourceSchema": {
+    "example": {
+     "data": [
+      {
+       "entity_id": "bb25a7e8-cc2f-4ba7-9bf4-7730ffe152bb",
+       "id": "f4efe11c-221f-4b49-a1e4-33eaf96a49ee",
+       "name": "New York City, NY"
+      }
+     ],
+     "page": {
+      "next": "https://api.ramp.com/developer/v1/<resources>?<new_params>"
+     }
+    },
+    "properties": {
+     "data": {
+      "description": "Resources returned in this page.",
+      "items": {
+       "$ref": "#/components/schemas/Location"
+      },
+      "type": "array"
+     },
+     "page": {
+      "allOf": [
+       {
+        "$ref": "#/components/schemas/DeveloperAPINestedPage"
+       }
+      ],
+      "description": "Pagination details for this response."
+     }
+    },
+    "required": [
+     "data",
+     "page"
+    ],
+    "type": "object"
+   },
+   "PaginatedResponseApiUserResourceSchema": {
+    "example": {
+     "data": [
+      {
+       "business_id": "9abffcf0-dd7d-42f0-b806-ce0502ab6496",
+       "custom_fields": [
+        {
+         "name": "Cost Center",
+         "value": "R&D - Data"
+        },
+        {
+         "name": "Employee ID",
+         "value": "f4efe11c-337f-49a5-86b3-5df128233f2c"
+        },
+        {
+         "name": "Region",
+         "value": "EMEA"
+        },
+        {
+         "name": "Team",
+         "value": "Core Platform"
+        }
+       ],
+       "department_id": "2d68eb67-f6eb-4284-8683-7d530c77a5a6",
+       "email": "cardholder_7@company.com",
+       "employee_id": "f4efe11c-337f-49a5-86b3-5df128233f2c",
+       "entity_id": "0e90959a-28ba-4f7d-a75b-9c241f384b9a",
+       "first_name": "Linda",
+       "id": "bde8334e-042e-4f39-9a5d-355ae17342e6",
+       "is_manager": false,
+       "last_name": "Gu",
+       "location_id": "f4efe11c-221f-4b49-a1e4-33eaf96a49ee",
+       "manager_id": "ccc5d4cc-337f-49a5-86b3-5df128233f2c",
+       "phone": 8004559999,
+       "role": "BUSINESS_USER",
+       "scheduled_deactivation_date": null,
+       "scheduled_invitation_date": null,
+       "status": "USER_ACTIVE"
+      }
+     ],
+     "page": {
+      "next": "https://api.ramp.com/developer/v1/<resources>?<new_params>"
+     }
+    },
+    "properties": {
+     "data": {
+      "description": "Resources returned in this page.",
+      "items": {
+       "$ref": "#/components/schemas/User"
+      },
+      "type": "array"
+     },
+     "page": {
+      "allOf": [
+       {
+        "$ref": "#/components/schemas/DeveloperAPINestedPage"
+       }
+      ],
+      "description": "Pagination details for this response."
+     }
+    },
+    "required": [
+     "data",
+     "page"
+    ],
+    "type": "object"
+   },
+   "User": {
+    "example": {
+     "business_id": "9abffcf0-dd7d-42f0-b806-ce0502ab6496",
+     "custom_fields": [
+      {
+       "name": "Cost Center",
+       "value": "R&D - Data"
+      },
+      {
+       "name": "Employee ID",
+       "value": "f4efe11c-337f-49a5-86b3-5df128233f2c"
+      },
+      {
+       "name": "Region",
+       "value": "EMEA"
+      },
+      {
+       "name": "Team",
+       "value": "Core Platform"
+      }
+     ],
+     "department_id": "2d68eb67-f6eb-4284-8683-7d530c77a5a6",
+     "email": "cardholder_7@company.com",
+     "employee_id": "f4efe11c-337f-49a5-86b3-5df128233f2c",
+     "entity_id": "0e90959a-28ba-4f7d-a75b-9c241f384b9a",
+     "first_name": "Linda",
+     "id": "bde8334e-042e-4f39-9a5d-355ae17342e6",
+     "is_manager": false,
+     "last_name": "Gu",
+     "location_id": "f4efe11c-221f-4b49-a1e4-33eaf96a49ee",
+     "manager_id": "ccc5d4cc-337f-49a5-86b3-5df128233f2c",
+     "phone": 8004559999,
+     "role": "BUSINESS_USER",
+     "scheduled_deactivation_date": null,
+     "scheduled_invitation_date": null,
+     "status": "USER_ACTIVE"
+    },
+    "properties": {
+     "business_id": {
+      "description": "Unique identifier of the company that the employee's working for.",
+      "format": "uuid",
+      "nullable": true,
+      "type": "string",
+      "x-relationship": {
+       "inverse_field_name": null,
+       "reference_field_name": "id",
+       "target_resource": "businesses",
+       "type": "many-to-one"
+      }
+     },
+     "custom_fields": {
+      "description": "A list of custom fields of the user.",
+      "items": {
+       "$ref": "#/components/schemas/ApiUserCustomField"
+      },
+      "readOnly": true,
+      "type": "array"
+     },
+     "department_id": {
+      "description": "Unique identifier of the employee's department",
+      "format": "uuid",
+      "nullable": true,
+      "type": "string",
+      "x-relationship": {
+       "inverse_field_name": null,
+       "reference_field_name": "id",
+       "target_resource": "departments",
+       "type": "many-to-one"
+      }
+     },
+     "email": {
+      "description": "The employee's email address",
+      "type": "string"
+     },
+     "employee_id": {
+      "description": "An alternative identifier for an employee, coming from external systems, which can be used in place of an email.",
+      "nullable": true,
+      "type": "string"
+     },
+     "entity_id": {
+      "description": "Unique identifier of business entity user is associated with.",
+      "format": "uuid",
+      "nullable": true,
+      "type": "string",
+      "x-relationship": {
+       "inverse_field_name": null,
+       "reference_field_name": "id",
+       "target_resource": "entities",
+       "type": "many-to-one"
+      }
+     },
+     "first_name": {
+      "description": "First name of the employee",
+      "type": "string"
+     },
+     "id": {
+      "description": "Unique employee identifier",
+      "format": "uuid",
+      "type": "string"
+     },
+     "is_manager": {
+      "description": "Whether the employee is a manager",
+      "readOnly": true,
+      "type": "boolean"
+     },
+     "last_name": {
+      "description": "Last name of the employee",
+      "type": "string"
+     },
+     "location_id": {
+      "description": "Unique identifier of the employee's location",
+      "format": "uuid",
+      "nullable": true,
+      "type": "string",
+      "x-relationship": {
+       "inverse_field_name": null,
+       "reference_field_name": "id",
+       "target_resource": "locations",
+       "type": "many-to-one"
+      }
+     },
+     "manager_id": {
+      "description": "Unique identifier of the employee's manager",
+      "format": "uuid",
+      "nullable": true,
+      "type": "string",
+      "x-relationship": {
+       "inverse_field_name": null,
+       "reference_field_name": "id",
+       "target_resource": "users",
+       "type": "many-to-one"
+      }
+     },
+     "phone": {
+      "description": "The employee's phone number",
+      "nullable": true,
+      "readOnly": true,
+      "type": "string"
+     },
+     "role": {
+      "description": "The employee's role",
+      "enum": [
+       "AUDITOR",
+       "BUSINESS_ADMIN",
+       "BUSINESS_BOOKKEEPER",
+       "BUSINESS_OWNER",
+       "BUSINESS_USER",
+       "GUEST_USER",
+       "IT_ADMIN",
+       "UNBUNDLED_ADMIN",
+       "UNBUNDLED_BOOKKEEPER",
+       "UNBUNDLED_OWNER",
+       "UNBUNDLED_USER"
+      ],
+      "type": "string"
+     },
+     "scheduled_deactivation_date": {
+      "description": "The date when the user is scheduled to be deactivated. Presented in ISO8601 format.",
+      "format": "date-time",
+      "nullable": true,
+      "type": "string"
+     },
+     "scheduled_invitation_date": {
+      "description": "The date when the user (currently in USER_DRAFT status) is scheduled to be invited to Ramp. Presented in ISO8601 format. Null if no invitation is scheduled.",
+      "format": "date-time",
+      "nullable": true,
+      "type": "string"
+     },
+     "status": {
+      "enum": [
+       "INVITE_EXPIRED",
+       "INVITE_PENDING",
+       "USER_ACTIVE",
+       "USER_DRAFT",
+       "USER_INACTIVE",
+       "USER_ONBOARDING",
+       "USER_SUSPENDED"
+      ],
+      "readOnly": true,
+      "type": "string"
+     }
+    },
+    "required": [
+     "business_id",
+     "custom_fields",
+     "department_id",
+     "employee_id",
+     "entity_id",
+     "is_manager",
+     "location_id",
+     "manager_id",
+     "phone",
+     "scheduled_deactivation_date",
+     "scheduled_invitation_date",
+     "status"
+    ],
+    "type": "object",
+    "x-resource-name": "users"
+   },
+   "DeveloperApiError": {
+    "properties": {
+     "additional_info": {
+      "additionalProperties": true,
+      "description": "Structured details specific to this error.",
+      "type": "object"
+     },
+     "error_code": {
+      "description": "Stable machine-readable error code.",
+      "type": "string"
+     },
+     "error_id": {
+      "description": "8 hex digit error identifier",
+      "type": "string"
+     },
+     "message": {
+      "description": "Human-readable explanation of the error.",
+      "type": "string"
+     },
+     "notes": {
+      "description": "Optional additional context about the error.",
+      "nullable": true,
+      "type": "string"
+     }
+    },
+    "required": [
+     "additional_info",
+     "error_code",
+     "error_id",
+     "message",
+     "notes"
+    ],
+    "type": "object"
+   },
+   "DeveloperApiErrorResponse": {
+    "additionalProperties": true,
+    "properties": {
+     "error_v2": {
+      "allOf": [
+       {
+        "$ref": "#/components/schemas/DeveloperApiError"
+       }
+      ],
+      "description": "Structured Developer API error payload."
+     }
+    },
+    "required": [
+     "error_v2"
+    ],
+    "type": "object"
+   }
+  }
+ },
+ "servers": [
+  {
+   "description": "Production",
+   "url": "https://api.ramp.com"
+  }
+ ]
+}

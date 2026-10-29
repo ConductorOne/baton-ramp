@@ -98,3 +98,34 @@ type VendorsResponse struct {
 	Vendors    []*Vendor
 	Pagination string
 }
+
+type Department struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type DepartmentsList struct {
+	Page        Page          `json:"page"`
+	Departments []*Department `json:"data"`
+}
+
+type DepartmentsResponse struct {
+	Departments []*Department
+	Pagination  string
+}
+
+type Location struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	EntityID string `json:"entity_id"`
+}
+
+type LocationsList struct {
+	Page      Page        `json:"page"`
+	Locations []*Location `json:"data"`
+}
+
+type LocationsResponse struct {
+	Locations  []*Location
+	Pagination string
+}
