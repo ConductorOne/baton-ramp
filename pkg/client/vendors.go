@@ -32,10 +32,11 @@ func (c *Client) ListVendors(ctx context.Context, pagination string) (*VendorsRe
 	if err != nil {
 		return nil, nil, err
 	}
-	ratelimitData, err := c.query(ctx, http.MethodGet, reqURL, vendors)
+	ratelimitData, err := c.queryCollection(ctx, http.MethodGet, reqURL, nil, vendors)
 	if err != nil {
 		return nil, ratelimitData, fmt.Errorf("baton-ramp: error listing vendors: %w", err)
 	}
+	warnIfTruncatedPage(ctx, vendorsPath, len(vendors.Vendors), effectivePageSize(reqURL), vendors.Page.Next)
 	return &VendorsResponse{
 		Vendors:    vendors.Vendors,
 		Pagination: vendors.Page.Next,

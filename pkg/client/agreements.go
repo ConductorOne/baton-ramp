@@ -46,10 +46,14 @@ func (c *Client) ListVendorAgreements(
 		req = &reqCopy
 	}
 	list := &VendorAgreementsList{}
-	ratelimitData, err := c.queryWithBody(ctx, http.MethodPost, reqURL, req, list)
+	ratelimitData, err := c.queryCollection(ctx, http.MethodPost, reqURL, req, list)
 	if err != nil {
 		return nil, ratelimitData, fmt.Errorf("baton-ramp: error listing vendor agreements: %w", err)
 	}
+	// This endpoint is POST-only, so the page size is in the body rather than
+	// the URL and effectivePageSize does not apply. req.PageSize is normalized
+	// above, so it is always positive here.
+	warnIfTruncatedPage(ctx, vendorAgreementsPath, len(list.Data), req.PageSize, list.Page.Next)
 	return &VendorAgreementsResponse{
 		Agreements: list.Data,
 		Pagination: list.Page.Next,
