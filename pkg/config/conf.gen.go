@@ -4,11 +4,12 @@ package config
 import "reflect"
 
 type Ramp struct {
-	Token            string `mapstructure:"token"`
-	RampClientId     string `mapstructure:"ramp-client-id"`
-	RampClientSecret string `mapstructure:"ramp-client-secret"`
-	RampBaseUrl      string `mapstructure:"ramp-base-url"`
-	AuditLogEvents   bool   `mapstructure:"audit-log-events"`
+	Token                  string `mapstructure:"token"`
+	RampClientId           string `mapstructure:"ramp-client-id"`
+	RampClientSecret       string `mapstructure:"ramp-client-secret"`
+	RampBaseUrl            string `mapstructure:"ramp-base-url"`
+	AuditLogEvents         bool   `mapstructure:"audit-log-events"`
+	ProvisioningAttributes bool   `mapstructure:"provisioning-attributes"`
 }
 
 func (c *Ramp) findFieldByTag(tagValue string) (any, bool) {

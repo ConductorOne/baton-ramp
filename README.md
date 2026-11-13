@@ -17,6 +17,14 @@ Required Ramp scopes:
 - Read-only sync: `users:read`, `vendors:read`
 - Provisioning: add `users:write` to create/deactivate/reactivate users and `vendors:write` to grant/revoke vendor ownership. Each is optional and independent; with OAuth client credentials, a write scope is requested only when an operation that needs it runs
 - Audit-log event polling: requires Ramp audit-log API availability, such as Ramp Plus; add `audit_logs:read` and set `BATON_AUDIT_LOG_EVENTS=true`
+- Account-creation attributes: add `departments:read` and `locations:read` and set `BATON_PROVISIONING_ATTRIBUTES=true` to let C1 set a new Ramp user's direct manager, department and location at creation time. Grant the scopes to the Ramp OAuth app first.
+
+  With the flag on, the account-creation schema accepts three optional profile fields:
+  - `direct_manager_email` — Ramp email of the new user's direct manager
+  - `department` — Ramp department ID or name
+  - `location` — Ramp location ID or name (also decides the user's entity)
+
+  Every supplied value is resolved to a Ramp ID **before** the user is created; a value that matches nothing fails account creation with a clear error instead of creating the user without it.
 
 Vendor agreements are an opt-in Baton resource type and use Ramp's `vendors:read` scope. Ramp does not expose or require a separate `vendor_agreements:read` scope for this connector.
 
@@ -114,6 +122,7 @@ Flags:
       --log-level string                                 The log level: debug, info, warn, error ($BATON_LOG_LEVEL) (default "info")
       --otel-collector-endpoint string                   The endpoint of the OpenTelemetry collector to send observability data to ($BATON_OTEL_COLLECTOR_ENDPOINT)
   -p, --provisioning                                     This must be set in order for provisioning actions to be enabled ($BATON_PROVISIONING)
+      --provisioning-attributes                          Enable setting manager, department and location on Ramp user creation. Adds the departments:read and locations:read OAuth scopes — grant them to the Ramp OAuth app first. Default off. ($BATON_PROVISIONING_ATTRIBUTES)
       --ramp-base-url string                             Override the Ramp API base URL. Defaults to https://api.ramp.com. Use https://demo-api.ramp.com for sandbox. ($BATON_RAMP_BASE_URL) (default "https://api.ramp.com")
       --ramp-client-id string                            Ramp OAuth client ID — required when using client_credentials auth ($BATON_RAMP_CLIENT_ID)
       --ramp-client-secret string                        Ramp OAuth client secret — required when using client_credentials auth ($BATON_RAMP_CLIENT_SECRET)

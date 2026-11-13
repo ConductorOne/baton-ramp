@@ -1,0 +1,43 @@
+{
+ "source_url": "https://docs.ramp.com/openapi/developer-api.json",
+ "accessed_date": "2026-10-28",
+ "note": "specs/openapi.json is a scoped subset: each operation below was copied verbatim (operation object) from the official Ramp Developer API spec at the source URL. The components block is copied unchanged so the operations resolve. Everything else in the official spec is omitted.",
+ "operations": [
+  {
+   "operation": "createUserDeferred",
+   "method_path": "POST /developer/v1/users/deferred",
+   "client_location": "pkg/client/users.go (CreateUser); wire fields pkg/client/users.go CreateUserRequest; resolution pkg/connector/account_attributes.go",
+   "provenance": "copied verbatim"
+  },
+  {
+   "operation": "listUsers",
+   "method_path": "GET /developer/v1/users",
+   "client_location": "pkg/client/users.go (ListUsers, FindUserByEmail)",
+   "provenance": "copied verbatim"
+  },
+  {
+   "operation": "listDepartments",
+   "method_path": "GET /developer/v1/departments",
+   "client_location": "pkg/client/org.go (ListDepartments)",
+   "provenance": "copied verbatim"
+  },
+  {
+   "operation": "getDepartment",
+   "method_path": "GET /developer/v1/departments/{department_id}",
+   "client_location": "pkg/client/org.go (GetDepartment)",
+   "provenance": "copied verbatim"
+  },
+  {
+   "operation": "listLocations",
+   "method_path": "GET /developer/v1/locations",
+   "client_location": "pkg/client/org.go (ListLocations)",
+   "provenance": "copied verbatim"
+  },
+  {
+   "operation": "getLocation",
+   "method_path": "GET /developer/v1/locations/{location_id}",
+   "client_location": "pkg/client/org.go (GetLocation)",
+   "provenance": "copied verbatim"
+  }
+ ]
+}

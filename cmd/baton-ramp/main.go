@@ -40,6 +40,12 @@ const (
 	// It reads audit-log events for the incremental sync feed.
 	auditLogsScope = "audit_logs:read"
 
+	// departmentsReadScope / locationsReadScope are appended only when the
+	// provisioning-attributes flag is true. They read departments and
+	// locations to resolve account-creation attribute values to Ramp IDs.
+	departmentsReadScope = "departments:read"
+	locationsReadScope   = "locations:read"
+
 	vendorAgreementResourceTypeID = "vendor_agreement"
 )
 
@@ -51,6 +57,9 @@ func readScopes(cc *cfg.Ramp) []string {
 	scopes = append(scopes, baseRampOAuthScopes...)
 	if cc.AuditLogEvents {
 		scopes = append(scopes, auditLogsScope)
+	}
+	if cc.ProvisioningAttributes {
+		scopes = append(scopes, departmentsReadScope, locationsReadScope)
 	}
 	return scopes
 }
@@ -144,6 +153,7 @@ func getConnector(ctx context.Context, cc *cfg.Ramp, runTimeOpts cli.RunTimeOpts
 		connector.WithBaseURL(cc.RampBaseUrl),
 		connector.WithVendorAgreements(vendorAgreementEnabled(runTimeOpts.SyncResourceTypeIDs)),
 		connector.WithAuditLogEvents(cc.AuditLogEvents),
+		connector.WithProvisioningAttributes(cc.ProvisioningAttributes),
 		authOpt,
 	)
 	if err != nil {

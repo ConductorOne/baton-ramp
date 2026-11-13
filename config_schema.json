@@ -137,6 +137,12 @@
       "displayName": "Sync audit log events",
       "description": "Enable Ramp audit-log polling for incremental sync events. Requires Ramp audit-log API availability, such as Ramp Plus, and adds the audit_logs:read OAuth scope. Default off.",
       "boolField": {}
+    },
+    {
+      "name": "provisioning-attributes",
+      "displayName": "Set manager, department and location on user creation",
+      "description": "Enable setting manager, department and location on Ramp user creation. Adds the departments:read and locations:read OAuth scopes — grant them to the Ramp OAuth app first. Default off.",
+      "boolField": {}
     }
   ],
   "displayName": "Ramp",
@@ -150,7 +156,8 @@
       "fields": [
         "token",
         "ramp-base-url",
-        "audit-log-events"
+        "audit-log-events",
+        "provisioning-attributes"
       ],
       "default": true
     },
@@ -162,7 +169,8 @@
         "ramp-client-id",
         "ramp-client-secret",
         "ramp-base-url",
-        "audit-log-events"
+        "audit-log-events",
+        "provisioning-attributes"
       ]
     }
   ]

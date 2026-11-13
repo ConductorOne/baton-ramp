@@ -24,6 +24,11 @@ type CreateUserRequest struct {
 	LastName       string `json:"last_name"`
 	Role           string `json:"role"`
 	IdempotencyKey string `json:"idempotency_key"`
+	// Optional account-creation attributes. Nil pointers ⇒ fields absent from
+	// the request body, keeping attribute-less creation byte-identical.
+	DepartmentID    *string `json:"department_id,omitempty"`
+	DirectManagerID *string `json:"direct_manager_id,omitempty"`
+	LocationID      *string `json:"location_id,omitempty"`
 }
 
 func (c *Client) ListUsers(ctx context.Context, pagination string) (*UsersResponse, *v2.RateLimitDescription, error) {
