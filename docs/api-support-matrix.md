@@ -33,7 +33,11 @@ The current Ramp user list/fetch role enum has expanded beyond the original v1 s
 |---|---:|---|---|
 | `GET /developer/v1/users` | Yes | Full for users and role grants | Lists users, builds user resources, and derives role grants from `role`. Account creation also filters by `email` to return an existing user instead of creating a duplicate. |
 | `GET /developer/v1/users/{user_id}` | No | Missing | Not needed for sync because list returns the same user fields used by the connector. |
-| `POST /developer/v1/users/deferred` | Yes | Partial | Supports account creation with `email`, `first_name`, `last_name`, and `role`. Other create fields are not exposed in the account creation schema. |
+| `GET /developer/v1/departments` | Yes | Read only | Resolves the `department` account-creation attribute by name via `pkg/client/org.go` and `pkg/connector/account_attributes.go` (requires `departments:read` and `BATON_PROVISIONING_ATTRIBUTES=true`). |
+| `GET /developer/v1/departments/{id}` | Yes | Read only | Probes the `department` account-creation attribute by ID via `pkg/client/org.go` and `pkg/connector/account_attributes.go`. |
+| `GET /developer/v1/locations` | Yes | Read only | Resolves the `location` account-creation attribute by name via `pkg/client/org.go` and `pkg/connector/account_attributes.go` (requires `locations:read` and `BATON_PROVISIONING_ATTRIBUTES=true`). |
+| `GET /developer/v1/locations/{id}` | Yes | Read only | Probes the `location` account-creation attribute by ID via `pkg/client/org.go` and `pkg/connector/account_attributes.go`. |
+| `POST /developer/v1/users/deferred` | Yes | Partial | Supports account creation with `email`, `first_name`, `last_name`, and `role`. With `BATON_PROVISIONING_ATTRIBUTES=true`, also sends `direct_manager_id`, `department_id`, and `location_id` resolved from the optional account-creation profile fields. Other create fields are not exposed in the account creation schema. |
 | `GET /developer/v1/users/deferred/status/{task_id}` | No | Missing | Connector returns action-required after invite; it does not poll deferred task status. |
 | `PATCH /developer/v1/users/{user_id}` | No | Missing | Role/manager/location/department updates are not implemented. |
 | `PATCH /developer/v1/users/{user_id}/deactivate` | Yes | Full | Exposed as `disable_user` action. |
@@ -101,11 +105,11 @@ Fields from `POST /developer/v1/users/deferred`.
 | `last_name` | string | Full | `pkg/connector/connector.go`, `pkg/connector/users.go` | Required account creation field. |
 | `role` | enum | Full | `pkg/connector/connector.go`, `pkg/connector/users.go` | Required; accepts API-invitable roles only. Ramp can return `BUSINESS_OWNER` and `UNBUNDLED_*` on reads, but those values are not accepted for account creation. |
 | `idempotency_key` | string | Internal | `pkg/client/users.go` | Generated automatically when not supplied. |
-| `department_id` | string | Missing | n/a | Not exposed in C1 account creation schema. |
-| `direct_manager_id` | string | Missing | n/a | Not exposed in C1 account creation schema. |
+| `department_id` | string | Exposed | `pkg/connector/account_attributes.go`, `pkg/client/users.go` | Optional account-creation profile field `department` (Ramp department ID or name) resolves to this field when `BATON_PROVISIONING_ATTRIBUTES=true`. |
+| `direct_manager_id` | string | Exposed | `pkg/connector/account_attributes.go`, `pkg/client/users.go` | Optional account-creation profile field `direct_manager_email` resolves to this field via `GET /developer/v1/users?email=` when `BATON_PROVISIONING_ATTRIBUTES=true`. |
 | `is_draft` | boolean | Missing | n/a | Not exposed in C1 account creation schema. |
 | `is_manager` | boolean | Missing | n/a | Not exposed in C1 account creation schema. |
-| `location_id` | string | Missing | n/a | Not exposed in C1 account creation schema. |
+| `location_id` | string | Exposed | `pkg/connector/account_attributes.go`, `pkg/client/users.go` | Optional account-creation profile field `location` (Ramp location ID or name) resolves to this field when `BATON_PROVISIONING_ATTRIBUTES=true`. |
 | `scheduled_deactivation_date` | date string | Missing | n/a | Not exposed in C1 account creation schema. |
 
 ## User update request fields

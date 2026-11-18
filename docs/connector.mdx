@@ -70,6 +70,11 @@ The Ramp connector supports two authentication methods. Choose the one that fits
 
     - `audit_logs:read` — read Ramp audit-log events for incremental sync
 
+    If you enable provisioning attributes (`BATON_PROVISIONING_ATTRIBUTES=true`), also select:
+
+    - `departments:read` — resolve the `department` account-creation field to a Ramp ID
+    - `locations:read` — resolve the `location` account-creation field to a Ramp ID
+
     <Warning>
     The **users:write** and **vendors:write** scopes are used only when C1 provisions and deprovisions access. **If you do not want C1 to perform these tasks, do not grant these scopes.**
     </Warning>
@@ -105,6 +110,11 @@ For more information, see the [Ramp API token documentation](https://docs.ramp.c
        If you enable audit-log event polling, also select:
 
        - `audit_logs:read` — read Ramp audit-log events for incremental sync
+
+       If you enable provisioning attributes (`BATON_PROVISIONING_ATTRIBUTES=true`), also select:
+
+       - `departments:read` — resolve the `department` account-creation field to a Ramp ID
+       - `locations:read` — resolve the `location` account-creation field to a Ramp ID
 
     <Warning>
     The **users:write** and **vendors:write** scopes are used only when C1 provisions and deprovisions access. **If you do not want C1 to perform these tasks, do not grant these scopes.**
@@ -231,6 +241,7 @@ See the [Ramp authorization docs](https://docs.ramp.com/developer-api/v1/authori
 - **Optional, for vendor ownership provisioning**: `vendors:write`, to grant or revoke vendor ownership from C1.
 - Each write scope is optional and independent. The connector requests a write scope only when C1 runs a task that needs it.
 - **Required only if `BATON_AUDIT_LOG_EVENTS=true`**: Ramp audit-log API availability, such as Ramp Plus, and the `audit_logs:read` scope.
+- **Required only if `BATON_PROVISIONING_ATTRIBUTES=true`**: the `departments:read` and `locations:read` scopes, to resolve account-creation attribute values to Ramp IDs.
 
 The connector points at `https://api.ramp.com` by default. Set `BATON_RAMP_BASE_URL` (or the **Ramp API Base URL** field) to `https://demo-api.ramp.com` (or another Ramp environment) to override.
 
@@ -241,6 +252,16 @@ The connector ships with an opt-in `vendor_agreement` resource type. When enable
 Ramp vendors are always decorated with cross-system identity and pre-aggregated trailing-window spend when those fields are returned by Ramp.
 
 Set `BATON_AUDIT_LOG_EVENTS=true` to expose Ramp's audit-log API as an event feed so vendor and agreement changes can flow into C1 incrementally between full syncs. This setting is independent from vendor-agreement resource enablement and requires Ramp audit-log API availability, such as Ramp Plus, plus the `audit_logs:read` scope. When the flag is unset (the default), the audit-log API is not called.
+
+### Account-creation attributes
+
+Set `BATON_PROVISIONING_ATTRIBUTES=true` to let C1 set a new Ramp user's direct manager, department and location when it creates the account. The account-creation schema gains three optional fields:
+
+- `direct_manager_email` — Ramp email of the new user's direct manager.
+- `department` — Ramp department ID or name.
+- `location` — Ramp location ID or name (in Ramp, the location decides which entity the user belongs to).
+
+Each value is resolved to a Ramp ID **before** the user is created: the connector probes Ramp by ID first, then falls back to a case-insensitive name walk over `GET /developer/v1/departments` and `GET /developer/v1/locations`. A value that matches nothing — or matches more than one department or location — fails account creation with a clear error instead of creating the user without it. Resolving these fields requires the `departments:read` and `locations:read` scopes; grant them to the Ramp OAuth app before enabling the flag.
 
 #### Secrets configuration
 
