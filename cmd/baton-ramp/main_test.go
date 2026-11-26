@@ -11,30 +11,35 @@ import (
 
 func TestScopeBuilders(t *testing.T) {
 	for _, auditLogEvents := range []bool{false, true} {
-		cc := &cfg.Ramp{AuditLogEvents: auditLogEvents}
-		wantRead := []string{usersReadScope, vendorsReadScope}
-		if auditLogEvents {
-			wantRead = append(wantRead, auditLogsScope)
-		}
+		for _, provisioningAttributes := range []bool{false, true} {
+			cc := &cfg.Ramp{AuditLogEvents: auditLogEvents, ProvisioningAttributes: provisioningAttributes}
+			wantRead := []string{usersReadScope, vendorsReadScope}
+			if auditLogEvents {
+				wantRead = append(wantRead, auditLogsScope)
+			}
+			if provisioningAttributes {
+				wantRead = append(wantRead, departmentsReadScope, locationsReadScope)
+			}
 
-		read := readScopes(cc)
-		if !slices.Equal(read, wantRead) {
-			t.Fatalf("audit=%v: read scopes = %v, want %v", auditLogEvents, read, wantRead)
-		}
+			read := readScopes(cc)
+			if !slices.Equal(read, wantRead) {
+				t.Fatalf("audit=%v prov=%v: read scopes = %v, want %v", auditLogEvents, provisioningAttributes, read, wantRead)
+			}
 
-		usersWrite := usersWriteScopes(cc)
-		if want := append(slices.Clone(wantRead), usersWriteScope); !slices.Equal(usersWrite, want) {
-			t.Fatalf("audit=%v: users write scopes = %v, want %v", auditLogEvents, usersWrite, want)
-		}
+			usersWrite := usersWriteScopes(cc)
+			if want := append(slices.Clone(wantRead), usersWriteScope); !slices.Equal(usersWrite, want) {
+				t.Fatalf("audit=%v prov=%v: users write scopes = %v, want %v", auditLogEvents, provisioningAttributes, usersWrite, want)
+			}
 
-		vendorsWrite := vendorsWriteScopes(cc)
-		if want := append(slices.Clone(wantRead), vendorsWriteScope); !slices.Equal(vendorsWrite, want) {
-			t.Fatalf("audit=%v: vendors write scopes = %v, want %v", auditLogEvents, vendorsWrite, want)
-		}
+			vendorsWrite := vendorsWriteScopes(cc)
+			if want := append(slices.Clone(wantRead), vendorsWriteScope); !slices.Equal(vendorsWrite, want) {
+				t.Fatalf("audit=%v prov=%v: vendors write scopes = %v, want %v", auditLogEvents, provisioningAttributes, vendorsWrite, want)
+			}
 
-		usersWrite[0] = "mutated"
-		if slices.Contains(vendorsWrite, "mutated") || slices.Contains(readScopes(cc), "mutated") {
-			t.Fatalf("audit=%v: scope builders share a backing array", auditLogEvents)
+			usersWrite[0] = "mutated"
+			if slices.Contains(vendorsWrite, "mutated") || slices.Contains(readScopes(cc), "mutated") {
+				t.Fatalf("audit=%v prov=%v: scope builders share a backing array", auditLogEvents, provisioningAttributes)
+			}
 		}
 	}
 }
